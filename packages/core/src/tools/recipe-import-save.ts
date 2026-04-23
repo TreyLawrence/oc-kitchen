@@ -40,6 +40,18 @@ export function createSaveImportedRecipeTool(
       try {
         const { url, ...recipeData } = params;
 
+        // Check for duplicate URL (spec rule 9: warn, don't block)
+        const duplicate = await recipeRepo.findBySourceUrl(url);
+        if (duplicate) {
+          respond(true, {
+            ok: true,
+            recipe: duplicate,
+            warning: `This recipe has already been imported as "${duplicate.title}"`,
+            duplicateId: duplicate.id,
+          });
+          return;
+        }
+
         if (autoTagger) {
           recipeData.tags = await autoTagger.generateTags(recipeData);
         }

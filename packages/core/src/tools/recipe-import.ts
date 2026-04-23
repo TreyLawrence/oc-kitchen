@@ -16,17 +16,14 @@ export function createImportRecipeTool(repo: RecipeRepository, autoTagger?: Auto
     },
     handler: async (params: any, { respond }: any) => {
       try {
-        // Check for duplicate
-        const existing = await repo.search({ query: params.url });
-        const duplicate = existing.recipes.find(
-          (r: any) => r.sourceUrl === params.url
-        );
+        // Check for duplicate URL (spec rule 9: warn, don't block)
+        const duplicate = await repo.findBySourceUrl(params.url);
         if (duplicate) {
           respond(true, {
             ok: true,
             recipe: duplicate,
-            parseMethod: "cached",
-            warning: "This URL has already been imported",
+            warning: `This recipe has already been imported as "${duplicate.title}"`,
+            duplicateId: duplicate.id,
           });
           return;
         }

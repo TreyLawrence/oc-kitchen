@@ -141,6 +141,51 @@ describe("RecipeRepository", () => {
     });
   });
 
+  // Spec: Behavior Rule 9 — "Duplicate detection: warn when importing a URL that already exists"
+  describe("findBySourceUrl", () => {
+    it("finds a recipe by its source URL", async () => {
+      await repo.create({
+        title: "Gochujang Chicken",
+        source: "imported",
+        sourceUrl: "https://www.bonappetit.com/recipe/gochujang-chicken",
+        instructions: "Roast it",
+      });
+
+      const found = await repo.findBySourceUrl("https://www.bonappetit.com/recipe/gochujang-chicken");
+      expect(found).not.toBeNull();
+      expect(found!.title).toBe("Gochujang Chicken");
+    });
+
+    it("matches URLs with trailing slash differences", async () => {
+      await repo.create({
+        title: "Mapo Tofu",
+        source: "imported",
+        sourceUrl: "https://thewoksoflife.com/mapo-tofu/",
+        instructions: "Cook it",
+      });
+
+      const found = await repo.findBySourceUrl("https://thewoksoflife.com/mapo-tofu");
+      expect(found).not.toBeNull();
+      expect(found!.title).toBe("Mapo Tofu");
+    });
+
+    it("returns null when URL not found", async () => {
+      const found = await repo.findBySourceUrl("https://example.com/not-here");
+      expect(found).toBeNull();
+    });
+
+    it("returns null when no recipes have source URLs", async () => {
+      await repo.create({
+        title: "Manual Recipe",
+        source: "manual",
+        instructions: "Do it",
+      });
+
+      const found = await repo.findBySourceUrl("https://example.com/recipe");
+      expect(found).toBeNull();
+    });
+  });
+
   describe("update", () => {
     it("updates recipe fields", async () => {
       const created = await repo.create({
