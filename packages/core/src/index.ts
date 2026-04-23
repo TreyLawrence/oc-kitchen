@@ -63,6 +63,7 @@ const plugin = {
 
     // Recipe tools
     api.registerTool(createCreateRecipeTool(recipeRepo, autoTagger));
+
     api.registerTool(createGetRecipeTool(recipeRepo, cookLogRepo));
     api.registerTool(createSearchRecipesTool(recipeRepo));
     api.registerTool(createUpdateRecipeTool(recipeRepo));
