@@ -5,6 +5,37 @@ import { now } from "../utils/dates.js";
 
 type Db = Parameters<typeof eq> extends never ? never : any;
 
+// Canonical equipment names with their default categories.
+// Keys are lowercase for case-insensitive matching.
+const EQUIPMENT_ALIASES: Record<string, { name: string; category: string }> = {
+  // Abbreviations
+  "bge": { name: "Big Green Egg", category: "grill" },
+  "ip": { name: "Instant Pot", category: "appliance" },
+  "kj": { name: "Kamado Joe", category: "grill" },
+  "fp": { name: "food processor", category: "appliance" },
+  "ib": { name: "immersion blender", category: "appliance" },
+  // Full names (for casing normalization)
+  "big green egg": { name: "Big Green Egg", category: "grill" },
+  "kamado joe": { name: "Kamado Joe", category: "grill" },
+  "instant pot": { name: "Instant Pot", category: "appliance" },
+  "king kooker": { name: "King Kooker", category: "outdoor" },
+  "kitchenaid": { name: "KitchenAid", category: "appliance" },
+  "zojirushi": { name: "Zojirushi", category: "appliance" },
+  "le creuset": { name: "Le Creuset", category: "cookware" },
+  "lodge": { name: "Lodge", category: "cookware" },
+  "thermapen": { name: "Thermapen", category: "tool" },
+};
+
+function normalizeEquipment(item: { name: string; category?: string; notes?: string }) {
+  const match = EQUIPMENT_ALIASES[item.name.toLowerCase()];
+  if (!match) return item;
+  return {
+    ...item,
+    name: match.name,
+    category: item.category ?? match.category,
+  };
+}
+
 export class UserProfileRepository {
   constructor(private db: any) {}
 
@@ -13,13 +44,16 @@ export class UserProfileRepository {
   async addEquipment(
     items: Array<{ name: string; category?: string; notes?: string }>
   ) {
-    const rows = items.map((item) => ({
-      id: newId(),
-      name: item.name,
-      category: item.category ?? null,
-      notes: item.notes ?? null,
-      createdAt: now(),
-    }));
+    const rows = items.map((item) => {
+      const normalized = normalizeEquipment(item);
+      return {
+        id: newId(),
+        name: normalized.name,
+        category: normalized.category ?? null,
+        notes: normalized.notes ?? null,
+        createdAt: now(),
+      };
+    });
 
     for (const row of rows) {
       this.db.insert(userEquipment).values(row).run();

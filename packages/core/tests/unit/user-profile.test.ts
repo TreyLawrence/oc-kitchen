@@ -49,6 +49,75 @@ describe("UserProfileRepository", () => {
       const items = await repo.listEquipment();
       expect(items[0].category).toBe("cookware");
     });
+
+    // Spec: "Equipment names are normalized — 'BGE' → 'Big Green Egg', 'IP' → 'Instant Pot'"
+    it("normalizes common abbreviations to canonical names", async () => {
+      await repo.addEquipment([
+        { name: "BGE", category: "grill" },
+        { name: "IP", category: "appliance" },
+      ]);
+
+      const items = await repo.listEquipment();
+      const names = items.map((e) => e.name);
+      expect(names).toContain("Big Green Egg");
+      expect(names).toContain("Instant Pot");
+    });
+
+    it("normalizes case-insensitive abbreviations", async () => {
+      await repo.addEquipment([
+        { name: "bge" },
+        { name: "Ip" },
+      ]);
+
+      const items = await repo.listEquipment();
+      const names = items.map((e) => e.name);
+      expect(names).toContain("Big Green Egg");
+      expect(names).toContain("Instant Pot");
+    });
+
+    it("infers category from normalized name when not provided", async () => {
+      await repo.addEquipment([
+        { name: "BGE" },
+        { name: "IP" },
+      ]);
+
+      const items = await repo.listEquipment();
+      const bge = items.find((e) => e.name === "Big Green Egg");
+      const ip = items.find((e) => e.name === "Instant Pot");
+      expect(bge?.category).toBe("grill");
+      expect(ip?.category).toBe("appliance");
+    });
+
+    it("preserves explicit category even when normalizing name", async () => {
+      await repo.addEquipment([
+        { name: "BGE", category: "outdoor" },
+      ]);
+
+      const items = await repo.listEquipment();
+      expect(items[0].name).toBe("Big Green Egg");
+      expect(items[0].category).toBe("outdoor");
+    });
+
+    it("passes through names that are not abbreviations", async () => {
+      await repo.addEquipment([
+        { name: "cast iron skillet", category: "cookware" },
+      ]);
+
+      const items = await repo.listEquipment();
+      expect(items[0].name).toBe("cast iron skillet");
+    });
+
+    it("normalizes full names with different casing", async () => {
+      await repo.addEquipment([
+        { name: "instant pot" },
+        { name: "big green egg" },
+      ]);
+
+      const items = await repo.listEquipment();
+      const names = items.map((e) => e.name);
+      expect(names).toContain("Instant Pot");
+      expect(names).toContain("Big Green Egg");
+    });
   });
 
   describe("preferences", () => {
