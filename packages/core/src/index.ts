@@ -53,7 +53,7 @@ const plugin = {
     const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo, userProfileRepo);
     const mealPlanRepo = new MealPlanRepository(db);
     const groceryRepo = new GroceryRepository(db);
-    const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo);
+    const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
