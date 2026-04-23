@@ -158,6 +158,51 @@ describe("suggest_meal_plan tool", () => {
     expect(banger.tags).toEqual(["quick", "asian"]);
   });
 
+  it("includes prepHints for recipes needing advance prep", async () => {
+    const recipe = await recipeRepo.create({
+      title: "Overnight Focaccia",
+      source: "manual",
+      instructions: "Mix flour, water, yeast. Let the dough rise overnight in the fridge. Shape and bake the next day.",
+    });
+    await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "banger" });
+
+    const respond = vi.fn();
+    await tool.handler({ weekStart: "2026-04-27" }, { respond });
+
+    const bangers = respond.mock.calls[0][1].context.recipeLibrary.bangers;
+    const focaccia = bangers.find((r: any) => r.title === "Overnight Focaccia");
+    expect(focaccia).toBeDefined();
+    expect(focaccia.prepHints).toHaveLength(1);
+    expect(focaccia.prepHints[0].keyword).toBe("overnight");
+    expect(focaccia.prepHints[0].leadTimeHours).toBe(12);
+  });
+
+  it("includes empty prepHints for recipes without advance prep", async () => {
+    const recipe = await recipeRepo.create({
+      title: "Quick Stir Fry",
+      source: "manual",
+      instructions: "Heat oil. Add garlic. Cook chicken 5 minutes. Add vegetables. Serve.",
+    });
+    await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "banger" });
+
+    const respond = vi.fn();
+    await tool.handler({ weekStart: "2026-04-27" }, { respond });
+
+    const bangers = respond.mock.calls[0][1].context.recipeLibrary.bangers;
+    const stirFry = bangers.find((r: any) => r.title === "Quick Stir Fry");
+    expect(stirFry).toBeDefined();
+    expect(stirFry.prepHints).toEqual([]);
+  });
+
+  it("mentions prep dependencies in instructions", async () => {
+    const respond = vi.fn();
+    await tool.handler({ weekStart: "2026-04-27" }, { respond });
+
+    const result = respond.mock.calls[0][1];
+    expect(result.instructions).toContain("prepHints");
+    expect(result.instructions).toContain("dependsOn");
+  });
+
   it("uses explore ratio in instructions", async () => {
     await profileRepo.setPreference("explore_ratio", 0.6);
 
