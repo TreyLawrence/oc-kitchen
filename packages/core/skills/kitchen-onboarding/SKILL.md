@@ -30,8 +30,16 @@ Ask what cooking equipment they have. Accept natural language ("I've got a Big G
 - **Bakeware**: sheet pans, pizza steel, bread pans
 - **Tools**: mandoline, mortar and pestle, pasta machine, thermometer, scale
 
-### Step 2: Cuisine preferences
-Ask what kinds of food they love. Also ask: "Are you an adventurous cook who wants to be pushed to try new things, or do you prefer sticking to what you know?" This sets the explore vs exploit ratio for meal planning.
+### Step 2: Cuisine preferences & adventurousness
+Ask what kinds of food they love. Then ask about their appetite for new recipes vs proven favorites:
+
+"When I plan your meals each week, how much do you want me to push you toward new recipes vs sticking with hits? Options:"
+- **"I want mostly new stuff"** → `very_adventurous`, explore_ratio ~0.65
+- **"Healthy mix, leaning new"** → `adventurous`, explore_ratio ~0.45
+- **"Even split"** → `balanced`, explore_ratio ~0.30
+- **"Mostly my favorites"** → `comfort_focused`, explore_ratio ~0.15
+
+This directly controls how many new vs proven recipes appear in weekly meal plans. They can always adjust later ("more new stuff this week" or "give me comfort food").
 
 ### Step 3: Favorite recipe sources
 Ask: "What food blogs or recipe sites do you love? I'll keep an eye on them for new recipe ideas." Store as `favorite_sources`. Examples: bonappetit.com, cooking.nytimes.com, thewoksoflife.com, seriouseats.com.

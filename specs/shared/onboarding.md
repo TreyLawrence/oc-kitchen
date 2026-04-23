@@ -36,7 +36,8 @@ Key-value pairs in `user_preferences` table:
 | Key | Value type | Example |
 |-----|-----------|---------|
 | `cuisine_affinities` | JSON string[] | `["korean", "mexican", "italian", "bbq"]` |
-| `adventurousness` | JSON string | `"adventurous"` or `"comfort-focused"` |
+| `adventurousness` | JSON string | `"very_adventurous"`, `"adventurous"`, `"balanced"`, or `"comfort_focused"` |
+| `explore_ratio` | JSON number | `0.6` — derived from adventurousness, adjustable. Fraction of new/untried recipes in weekly meal plans. |
 | `dietary_constraints` | JSON string[] | `["no shellfish"]` |
 | `dislikes` | JSON string[] | `["cilantro", "organ meats"]` |
 | `household_size` | JSON number | `2` |

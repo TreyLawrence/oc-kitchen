@@ -287,7 +287,13 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 ## Behavior Rules
 
 ### Explore vs Exploit
-1. **Default ratio: ~30% explore, ~70% exploit.** For a 5-cooking-night week, that's 1-2 new recipes and 3-4 proven ones.
+1. **Explore ratio is set during onboarding** based on adventurousness:
+   - `"very adventurous"` → ~60-70% explore (mostly new recipes, proven ones fill the gaps)
+   - `"adventurous"` → ~40-50% explore (healthy mix, leaning toward new)
+   - `"balanced"` → ~30% explore (default for users who don't specify)
+   - `"comfort-focused"` → ~10-20% explore (mostly favorites, occasional new thing)
+   
+   Stored as `explore_ratio` in user preferences. The agent can adjust over time based on feedback, and the user can change it anytime ("give me more new stuff" or "I want to stick to the hits this week").
 2. **Exploit tiers determine frequency:**
    - **Bangers:** Can appear every 2-3 weeks. Heavy rotation.
    - **Make again:** Every 3-4 weeks. Regular rotation.
