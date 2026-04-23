@@ -1,0 +1,23 @@
+{
+  "id": "oc-kitchen-butcherbox",
+  "name": "OC Kitchen — ButcherBox",
+  "description": "Manage ButcherBox meat subscription — customize upcoming boxes based on meal plans",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "email": {
+        "type": "string",
+        "description": "ButcherBox account email"
+      },
+      "password": {
+        "type": "string",
+        "description": "ButcherBox account password"
+      }
+    },
+    "additionalProperties": false
+  },
+  "skills": [
+    "skills/butcherbox-ordering"
+  ]
+}

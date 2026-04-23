@@ -4,7 +4,9 @@
 
 After a grocery list is finalized, the user can trigger automated ordering from each store. OC Kitchen uses OpenClaw's computer-use capability to drive a browser, log into the store's website, search for and add items to cart, and either fill the cart (user places final order) or complete checkout.
 
-Each store is a separate OpenClaw plugin (`oc-kitchen-wegmans`, `oc-kitchen-weee`). This makes stores pluggable — anyone can build `oc-kitchen-instacart`, `oc-kitchen-kroger`, etc.
+Each store is a separate OpenClaw plugin (`oc-kitchen-wegmans`, `oc-kitchen-weee`, `oc-kitchen-butcherbox`). This makes stores pluggable — anyone can build `oc-kitchen-instacart`, `oc-kitchen-kroger`, etc.
+
+**ButcherBox is a special case** — it's a subscription service, not a grocery store. Instead of adding items to a cart, the agent customizes the upcoming box before the cutoff date. See the `butcherbox-ordering` skill for details.
 
 ## User Stories
 
