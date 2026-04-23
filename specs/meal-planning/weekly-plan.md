@@ -367,6 +367,35 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 15. **Prep entries are lightweight:** A prep entry doesn't take a full cooking night — "simmer stock for 2 hours" can coexist with a regular dinner recipe on the same night.
 16. **The agent should identify prep needs** by analyzing recipe instructions for keywords like "overnight", "the day before", "let rest for X hours", "make ahead".
 
+#### Prep Dependency Detection
+
+The `suggest_meal_plan` tool automatically scans recipe instructions for advance-prep needs and includes `prepHints` in each recipe summary. The agent uses these hints to schedule prep entries on prior days.
+
+**Detection keywords and lead times:**
+
+| Pattern | Lead time | Example |
+|---------|-----------|---------|
+| "overnight" (marinade, brine, soak, rest, refrigerate, rise, ferment, chill) | 12 hours | "marinate overnight" |
+| "the day before", "day ahead", "a day in advance" | 24 hours | "make the dough the day before" |
+| "X hours" before/ahead/in advance, rest/rise/marinate/chill for X hours (≥ 4h) | X hours | "let rest for 8 hours" |
+| "make ahead", "prepare ahead", "prep ahead" | 12 hours | "sauce can be made ahead" |
+
+**Output per recipe (included in `suggest_meal_plan` context):**
+
+```json
+{
+  "id": "abc123",
+  "title": "Overnight Focaccia",
+  "prepHints": [
+    { "keyword": "overnight", "leadTimeHours": 12, "snippet": "...let the dough rise overnight in the fridge..." }
+  ]
+}
+```
+
+- `prepHints` is an empty array if no advance prep is detected.
+- The agent should schedule a `category: "prep"` entry on the prior day for any recipe with non-empty `prepHints`, linked via `dependsOn`.
+- If the prep night is a skip day, the agent warns and suggests rescheduling.
+
 ### Prep Delegation
 17. **Helpers can do prep.** The user can designate household helpers (nanny, partner) who can do prep tasks. The agent generates a `generate_prep_list` for the helper — simple, standalone instructions (chop this, measure that, marinate these).
 18. **Prep reduces active cook time.** If prep is delegated, the agent subtracts prep time from the cook's required time. A recipe with 20 min prep + 40 min cook only needs 40 min from the cook if prep is done ahead.
