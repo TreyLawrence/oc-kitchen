@@ -92,7 +92,7 @@ const plugin = {
     api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo));
     api.registerTool(createCheckCalendarTool(userProfileRepo));
     api.registerTool(createBlockCookingTimeTool(userProfileRepo, mealPlanRepo, recipeRepo));
-    api.registerTool(createGeneratePrepListTool(recipeRepo));
+    api.registerTool(createGeneratePrepListTool(recipeRepo, mealPlanRepo, userProfileRepo));
 
     // Grocery tools
     api.registerTool(createGenerateGroceryListTool(groceryService));
