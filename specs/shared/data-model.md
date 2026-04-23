@@ -82,13 +82,15 @@ Individual meals within a plan. Each entry is a recipe (or custom text) assigned
 | sort_order | integer | default 0 |
 
 ### inventory_items
-Items currently in the kitchen.
+Items currently in the kitchen, including leftovers.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | text PK | nanoid |
 | name | text NOT NULL | |
 | category | text | Same categories as recipe_ingredients |
+| isLeftover | boolean | default false — true if this is leftover from a cooked recipe |
+| sourceRecipeId | text FK | → recipes.id — which recipe produced this leftover (nullable) |
 | quantity | real | |
 | unit | text | |
 | location | text | `"fridge"`, `"freezer"`, `"pantry"` |

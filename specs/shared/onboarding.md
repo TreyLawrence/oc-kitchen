@@ -42,6 +42,9 @@ Key-value pairs in `user_preferences` table:
 | `household_size` | JSON number | `2` |
 | `default_servings` | JSON number | `4` |
 | `favorite_sources` | JSON string[] | `["bonappetit.com", "cooking.nytimes.com", "thewoksoflife.com"]` |
+| `household_helpers` | JSON object[] | `[{"name": "Maria", "role": "nanny", "canDo": ["chopping", "measuring", "marinating"], "availability": "weekday afternoons during baby nap"}]` |
+| `cooking_window_start` | JSON string | `"17:00"` — when the user typically starts cooking |
+| `dinner_target_time` | JSON string | `"19:30"` — when dinner should be ready |
 | `preference_summary` | JSON string | AI-generated summary of learned preferences from cook history |
 
 ## Tool Contracts

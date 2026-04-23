@@ -4,6 +4,8 @@
 
 Track what's in the kitchen — fridge, freezer, and pantry. Inventory is used to: (1) subtract from grocery lists so you don't buy what you already have, (2) suggest recipes that use up expiring items, and (3) inform meal plan suggestions.
 
+Inventory also tracks **leftovers** — when a recipe makes more than the household eats, the remainder is tracked as a leftover item. Leftovers can cover future meals (usually lunch) or be moved to the freezer for a later date.
+
 ## User Stories
 
 - As a user, I can tell the agent what I have in my kitchen and it tracks it
@@ -12,6 +14,10 @@ Track what's in the kitchen — fridge, freezer, and pantry. Inventory is used t
 - As a user, my inventory is factored into grocery list generation (don't buy what I have)
 - As a user, I can tell the agent "I used up the chicken" and it updates
 - As a user, after a grocery order is delivered, inventory is updated with the new items
+- As a user, when I cook a recipe that serves more than my household, the agent tracks leftovers
+- As a user, I can tell the agent "move the leftover soup to the freezer" and it updates location
+- As a user, leftovers in the fridge are factored into meal planning (covers tomorrow's lunch)
+- As a user, leftovers in the freezer are available for future meal plans
 
 ## Data Model
 
