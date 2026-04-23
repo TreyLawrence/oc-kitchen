@@ -50,7 +50,7 @@ const plugin = {
     const recipeRepo = new RecipeRepository(db);
     const cookLogRepo = new CookLogRepository(db);
     const inventoryRepo = new InventoryRepository(db);
-    const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo);
+    const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo, userProfileRepo);
     const mealPlanRepo = new MealPlanRepository(db);
     const groceryRepo = new GroceryRepository(db);
     const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo);
@@ -61,7 +61,7 @@ const plugin = {
 
     // Recipe tools
     api.registerTool(createCreateRecipeTool(recipeRepo));
-    api.registerTool(createGetRecipeTool(recipeRepo));
+    api.registerTool(createGetRecipeTool(recipeRepo, cookLogRepo));
     api.registerTool(createSearchRecipesTool(recipeRepo));
     api.registerTool(createUpdateRecipeTool(recipeRepo));
     api.registerTool(createDeleteRecipeTool(recipeRepo));
