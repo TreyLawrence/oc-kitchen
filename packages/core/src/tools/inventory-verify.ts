@@ -1,6 +1,12 @@
 import { InventoryRepository } from "../repositories/inventory.repo.js";
+import { MealPlanRepository } from "../repositories/meal-plan.repo.js";
+import { RecipeRepository } from "../repositories/recipe.repo.js";
 
-export function createVerifyInventoryTool(repo: InventoryRepository) {
+export function createVerifyInventoryTool(
+  repo: InventoryRepository,
+  mealPlanRepo?: MealPlanRepository,
+  recipeRepo?: RecipeRepository,
+) {
   return {
     name: "verify_inventory",
     description:
@@ -15,9 +21,27 @@ export function createVerifyInventoryTool(repo: InventoryRepository) {
       try {
         const { confident, needsCheck } = await repo.getStaleItems();
 
+        let filteredConfident = confident;
+        let filteredNeedsCheck = needsCheck;
+
+        if (params.mealPlanId && mealPlanRepo && recipeRepo) {
+          const ingredientNames = await getIngredientNames(params.mealPlanId, mealPlanRepo, recipeRepo);
+          if (ingredientNames.size > 0) {
+            const isRelevant = (item: any) => {
+              const nameLower = item.name.toLowerCase();
+              for (const ing of ingredientNames) {
+                if (nameLower.includes(ing) || ing.includes(nameLower)) return true;
+              }
+              return false;
+            };
+            filteredConfident = confident.filter(isRelevant);
+            filteredNeedsCheck = needsCheck.filter(isRelevant);
+          }
+        }
+
         let question = "";
-        if (needsCheck.length > 0) {
-          const itemNames = needsCheck.map((i: any) => {
+        if (filteredNeedsCheck.length > 0) {
+          const itemNames = filteredNeedsCheck.map((i: any) => {
             const loc = i.location ? ` in the ${i.location}` : "";
             return `${i.name}${loc}`;
           });
@@ -26,14 +50,34 @@ export function createVerifyInventoryTool(repo: InventoryRepository) {
 
         respond(true, {
           ok: true,
-          confident,
-          needsCheck,
+          confident: filteredConfident,
+          needsCheck: filteredNeedsCheck,
           question,
-          allFresh: needsCheck.length === 0,
+          allFresh: filteredNeedsCheck.length === 0,
         });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
       }
     },
   };
+}
+
+async function getIngredientNames(
+  mealPlanId: string,
+  mealPlanRepo: MealPlanRepository,
+  recipeRepo: RecipeRepository,
+): Promise<Set<string>> {
+  const plan = await mealPlanRepo.getById(mealPlanId);
+  if (!plan) return new Set();
+
+  const names = new Set<string>();
+  for (const entry of plan.entries) {
+    if (!entry.recipeId) continue;
+    const recipe = await recipeRepo.getById(entry.recipeId);
+    if (!recipe) continue;
+    for (const ing of recipe.ingredients) {
+      names.add(ing.name.toLowerCase());
+    }
+  }
+  return names;
 }

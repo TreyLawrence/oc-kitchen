@@ -1,18 +1,24 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb } from "../../src/db/index.js";
 import { InventoryRepository } from "../../src/repositories/inventory.repo.js";
+import { RecipeRepository } from "../../src/repositories/recipe.repo.js";
+import { MealPlanRepository } from "../../src/repositories/meal-plan.repo.js";
 import { createVerifyInventoryTool } from "../../src/tools/inventory-verify.js";
 
 // Spec: specs/inventory/inventory-tracking.md — verify_inventory tool
 
 describe("verify_inventory tool", () => {
   let repo: InventoryRepository;
+  let recipeRepo: RecipeRepository;
+  let mealPlanRepo: MealPlanRepository;
   let tool: ReturnType<typeof createVerifyInventoryTool>;
 
   beforeEach(() => {
     const { db } = createTestDb();
     repo = new InventoryRepository(db);
-    tool = createVerifyInventoryTool(repo);
+    recipeRepo = new RecipeRepository(db);
+    mealPlanRepo = new MealPlanRepository(db);
+    tool = createVerifyInventoryTool(repo, mealPlanRepo, recipeRepo);
   });
 
   it("has correct name", () => {
@@ -114,11 +120,75 @@ describe("verify_inventory tool", () => {
     expect(stale.needsCheck[0].name).toBe("rice");
   });
 
-  it("accepts mealPlanId parameter without error", async () => {
-    const respond = vi.fn();
-    await tool.handler({ mealPlanId: "some-plan-id" }, { respond });
+  it("filters to meal-plan-relevant items when mealPlanId is provided", async () => {
+    // Add chicken and milk to inventory
+    await repo.add([
+      { name: "chicken thighs", category: "protein", quantity: 2, unit: "lbs", location: "fridge" },
+      { name: "milk", category: "dairy", quantity: 1, unit: "gallon", location: "fridge" },
+    ]);
 
-    // Currently mealPlanId is accepted but not used — should not error
-    expect(respond).toHaveBeenCalledWith(true, expect.objectContaining({ ok: true }));
+    // Create a recipe that only uses chicken
+    const recipe = await recipeRepo.create({
+      title: "Simple Chicken",
+      source: "manual",
+      instructions: "Cook the chicken",
+      ingredients: [{ name: "chicken thighs", quantity: 2, unit: "lbs" }],
+    });
+
+    // Create a meal plan with that recipe
+    const plan = await mealPlanRepo.create({
+      name: "Test Week",
+      weekStart: "2026-04-20",
+      weekEnd: "2026-04-26",
+      entries: [{ dayOfWeek: 1, mealType: "dinner", recipeId: recipe.id }],
+    });
+
+    // Patch getStaleItems to simulate staleness
+    const originalGetStale = repo.getStaleItems.bind(repo);
+    repo.getStaleItems = async () => {
+      return originalGetStale("2026-05-01");
+    };
+
+    const respond = vi.fn();
+    await tool.handler({ mealPlanId: plan.id }, { respond });
+
+    const result = respond.mock.calls[0][1];
+    expect(result.ok).toBe(true);
+    // Only chicken should appear (relevant to meal plan), not milk
+    const needsCheckNames = result.needsCheck.map((i: any) => i.name);
+    expect(needsCheckNames).toContain("chicken thighs");
+    expect(needsCheckNames).not.toContain("milk");
+  });
+
+  it("returns all stale items when no mealPlanId", async () => {
+    // Add chicken and milk to inventory
+    await repo.add([
+      { name: "chicken thighs", category: "protein", quantity: 2, unit: "lbs", location: "fridge" },
+      { name: "milk", category: "dairy", quantity: 1, unit: "gallon", location: "fridge" },
+    ]);
+
+    // Create a recipe that only uses chicken
+    await recipeRepo.create({
+      title: "Simple Chicken",
+      source: "manual",
+      instructions: "Cook the chicken",
+      ingredients: [{ name: "chicken thighs", quantity: 2, unit: "lbs" }],
+    });
+
+    // Patch getStaleItems to simulate staleness
+    const originalGetStale = repo.getStaleItems.bind(repo);
+    repo.getStaleItems = async () => {
+      return originalGetStale("2026-05-01");
+    };
+
+    const respond = vi.fn();
+    await tool.handler({}, { respond });
+
+    const result = respond.mock.calls[0][1];
+    expect(result.ok).toBe(true);
+    // Both items should appear since no meal plan filter
+    const needsCheckNames = result.needsCheck.map((i: any) => i.name);
+    expect(needsCheckNames).toContain("chicken thighs");
+    expect(needsCheckNames).toContain("milk");
   });
 });
