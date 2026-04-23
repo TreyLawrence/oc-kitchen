@@ -294,20 +294,73 @@ Modify an existing plan — swap recipes, change days, update status.
 ```
 
 ### `generate_prep_list`
-Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for a specific day's recipe. The list includes only tasks that don't require cooking knowledge — chopping, measuring, marinating, assembling.
+Generate a prep list for a household helper (nanny, partner, etc.). Supports two modes: **single-recipe** (pass `recipeId`) or **meal-plan day** (pass `mealPlanId` + `dayOfWeek` to get all recipes for that day). Either `recipeId` or `mealPlanId` + `dayOfWeek` must be provided. The list includes only tasks that don't require cooking knowledge — chopping, measuring, marinating, assembling.
 
 **Parameters:**
 ```json
 {
-  "recipeId": "abc123",
-  "helperName": "Maria"           // optional, for personalized messaging
+  "recipeId": "abc123",            // option A: single recipe
+  "mealPlanId": "plan1",           // option B: all recipes for a meal plan day
+  "dayOfWeek": 2,                  // required with mealPlanId (0=Mon..6=Sun)
+  "helperName": "Maria"            // optional, for personalized messaging
 }
 ```
 
-**Success:**
+**Success (single-recipe mode):**
 ```json
 {
   "ok": true,
+  "action": "generate_prep_list",
+  "recipe": {
+    "title": "Gochujang Chicken",
+    "ingredients": [...],
+    "instructions": "...",
+    "prepMinutes": 20
+  },
+  "household": {
+    "householdSize": 2,
+    "dinnerTargetTime": "19:30",
+    "helpers": ["Maria"]
+  },
+  "helperName": "Maria",
+  "instructions": "Read this recipe and extract ONLY prep tasks that don't require cooking knowledge..."
+}
+```
+
+**Success (meal-plan day mode):**
+```json
+{
+  "ok": true,
+  "action": "generate_prep_list",
+  "recipes": [
+    {
+      "title": "Gochujang Chicken",
+      "ingredients": [...],
+      "instructions": "...",
+      "prepMinutes": 20,
+      "entryCategory": "exploit"
+    },
+    {
+      "title": "Chicken Stock",
+      "ingredients": [...],
+      "instructions": "...",
+      "prepMinutes": 15,
+      "entryCategory": "prep"
+    }
+  ],
+  "household": {
+    "householdSize": 2,
+    "dinnerTargetTime": "19:30",
+    "helpers": ["Maria"]
+  },
+  "helperName": "Maria",
+  "instructions": "Read these recipes and extract ONLY prep tasks... When multiple recipes share prep (e.g. both need diced onion), combine into a single task."
+}
+```
+
+**Agent-generated output** (what the agent produces from the context above):
+```json
+{
   "prepList": {
     "recipeTitle": "Gochujang Chicken",
     "dinnerTime": "7:30pm",
@@ -325,7 +378,7 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 }
 ```
 
-**Design:** The agent generates the prep list from the recipe's ingredients and instructions using its own intelligence. It extracts prep-only tasks (no heat, no technique) and writes them as simple, standalone instructions that someone unfamiliar with the recipe can follow.
+**Design:** The tool gathers recipe and household context; the agent generates the prep list using its own intelligence. It extracts prep-only tasks (no heat, no technique) and writes them as simple, standalone instructions that someone unfamiliar with the recipe can follow. In meal-plan day mode, the agent should look for cross-recipe prep deduplication (e.g., two recipes needing diced onion → one combined task).
 
 ## Behavior Rules
 
