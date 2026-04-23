@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "85e37431-bcd3-4b3c-bcc0-75392d14b5ff",
+  "id": "c33c7229-8831-4269-8da6-cfff2b290773",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "cook_log": {
@@ -393,6 +393,21 @@
           "notNull": false,
           "autoincrement": false
         },
+        "is_leftover": {
+          "name": "is_leftover",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "source_recipe_id": {
+          "name": "source_recipe_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "location": {
           "name": "location",
           "type": "text",
@@ -437,7 +452,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "inventory_items_source_recipe_id_recipes_id_fk": {
+          "name": "inventory_items_source_recipe_id_recipes_id_fk",
+          "tableFrom": "inventory_items",
+          "tableTo": "recipes",
+          "columnsFrom": [
+            "source_recipe_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -482,6 +511,20 @@
         },
         "custom_title": {
           "name": "custom_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "depends_on": {
+          "name": "depends_on",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

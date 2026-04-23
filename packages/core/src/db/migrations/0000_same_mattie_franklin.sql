@@ -55,12 +55,15 @@ CREATE TABLE `inventory_items` (
 	`category` text,
 	`quantity` real,
 	`unit` text,
+	`is_leftover` integer DEFAULT false,
+	`source_recipe_id` text,
 	`location` text,
 	`expires_at` text,
 	`purchased_at` text,
 	`notes` text,
 	`created_at` text NOT NULL,
-	`updated_at` text NOT NULL
+	`updated_at` text NOT NULL,
+	FOREIGN KEY (`source_recipe_id`) REFERENCES `recipes`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `meal_plan_entries` (
@@ -70,6 +73,8 @@ CREATE TABLE `meal_plan_entries` (
 	`day_of_week` integer NOT NULL,
 	`meal_type` text NOT NULL,
 	`custom_title` text,
+	`category` text,
+	`depends_on` text,
 	`sort_order` integer DEFAULT 0 NOT NULL,
 	FOREIGN KEY (`meal_plan_id`) REFERENCES `meal_plans`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`recipe_id`) REFERENCES `recipes`(`id`) ON UPDATE no action ON DELETE set null
