@@ -123,7 +123,7 @@ Individual items on a grocery list.
 | quantity | real | |
 | unit | text | |
 | category | text | |
-| store | text | `"wegmans"`, `"weee"`, or null (unassigned) |
+| store | text | `"wegmans"`, `"weee"`, `"butcherbox"`, or null (unassigned) |
 | is_checked | boolean | default false |
 | recipe_id | text FK | → recipes.id (tracks which recipe needs this) |
 | sort_order | integer | default 0 |
@@ -135,7 +135,7 @@ Tracks agent-submitted orders to external stores.
 |--------|------|-------|
 | id | text PK | nanoid |
 | grocery_list_id | text FK NOT NULL | → grocery_lists.id |
-| store | text NOT NULL | `"wegmans"` or `"weee"` |
+| store | text NOT NULL | `"wegmans"`, `"weee"`, or `"butcherbox"` |
 | status | text NOT NULL | `"pending"`, `"agent_running"`, `"submitted"`, `"failed"`, `"delivered"` — default `"pending"` |
 | agent_run_id | text | Correlates with agent process |
 | order_total | real | |
