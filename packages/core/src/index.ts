@@ -25,6 +25,7 @@ import { createGetMealPlanTool } from "./tools/meal-plan-get.js";
 import { createUpdateMealPlanTool } from "./tools/meal-plan-update.js";
 import { createSuggestMealPlanTool } from "./tools/meal-plan-suggest.js";
 import { createCheckCalendarTool } from "./tools/calendar-check.js";
+import { createBlockCookingTimeTool } from "./tools/calendar-block.js";
 import { createGeneratePrepListTool } from "./tools/meal-plan-prep-list.js";
 import { GroceryRepository } from "./repositories/grocery.repo.js";
 import { GroceryGenerationService } from "./services/grocery-generation.service.js";
@@ -88,6 +89,7 @@ const plugin = {
     api.registerTool(createUpdateMealPlanTool(mealPlanRepo));
     api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo));
     api.registerTool(createCheckCalendarTool(userProfileRepo));
+    api.registerTool(createBlockCookingTimeTool(userProfileRepo, mealPlanRepo, recipeRepo));
     api.registerTool(createGeneratePrepListTool(recipeRepo));
 
     // Grocery tools
