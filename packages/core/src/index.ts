@@ -12,7 +12,7 @@ import { createDeleteRecipeTool } from "./tools/recipe-delete.js";
 import { createLogCookTool } from "./tools/cook-log.js";
 import { createImportRecipeTool } from "./tools/recipe-import.js";
 import { createDiscoverRecipesTool } from "./tools/recipe-discover.js";
-import { createGenerateRecipeTool } from "./tools/recipe-generate.js";
+import { createGenerateRecipeTool, createSaveGeneratedRecipeTool } from "./tools/recipe-generate.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -47,7 +47,8 @@ const plugin = {
     // Recipe discovery tools
     api.registerTool(createImportRecipeTool(recipeRepo));
     api.registerTool(createDiscoverRecipesTool(userProfileRepo));
-    api.registerTool(createGenerateRecipeTool(recipeRepo, userProfileRepo));
+    api.registerTool(createGenerateRecipeTool(userProfileRepo));
+    api.registerTool(createSaveGeneratedRecipeTool(recipeRepo));
   },
 };
 

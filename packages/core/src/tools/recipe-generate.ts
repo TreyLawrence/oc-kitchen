@@ -1,34 +1,25 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { RecipeRepository } from "../repositories/recipe.repo.js";
 import { UserProfileRepository } from "../repositories/user-profile.repo.js";
 
-const GENERATION_PROMPT = `You are a creative chef helping someone discover new recipes. Generate a detailed recipe based on their request.
-
-Return ONLY valid JSON with this exact structure (no markdown, no code fences):
-{
-  "title": "Recipe Title",
-  "description": "Brief 1-2 sentence description",
-  "servings": 4,
-  "prepMinutes": 15,
-  "cookMinutes": 30,
-  "ingredients": [
-    { "name": "ingredient name", "quantity": 1.5, "unit": "cups", "category": "produce" }
-  ],
-  "instructions": "Markdown formatted step-by-step instructions",
-  "tags": ["tag1", "tag2"]
-}
-
-Categories for ingredients: protein, produce, dairy, pantry, spice, other
-`;
+/**
+ * This tool doesn't call the Claude API directly — the agent IS Claude.
+ * Instead, it gathers user context and returns instructions for the agent
+ * to generate the recipe itself, then saves the result via save_generated_recipe.
+ *
+ * Flow:
+ * 1. Agent calls generate_recipe with user's prompt
+ * 2. Tool returns user context + generation instructions
+ * 3. Agent generates the recipe using its own intelligence
+ * 4. Agent calls save_generated_recipe with the structured result
+ */
 
 export function createGenerateRecipeTool(
-  recipeRepo: RecipeRepository,
   profileRepo: UserProfileRepository,
 ) {
   return {
     name: "generate_recipe",
     description:
-      "Ask Claude to create a new recipe based on a prompt, factoring in the user's kitchen equipment, cuisine preferences, and dietary constraints. The recipe is automatically saved.",
+      "Gather user context (equipment, preferences, constraints) for recipe generation. Returns context that the agent uses to create the recipe, then saves it via save_generated_recipe.",
     parameters: {
       type: "object",
       properties: {
@@ -48,83 +39,82 @@ export function createGenerateRecipeTool(
     },
     handler: async (params: any, { respond }: any) => {
       try {
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) {
-          respond(false, {
-            ok: false,
-            error:
-              "ANTHROPIC_API_KEY not configured. Set it in your environment or OpenClaw plugin config.",
-          });
-          return;
-        }
-
-        // Get user profile for context
         const profile = await profileRepo.getFullProfile();
 
-        // Build the prompt with user context
-        let userContext = "";
+        const context: Record<string, unknown> = {};
         if (profile.equipment.length > 0) {
-          userContext += `\nKitchen equipment: ${profile.equipment.map((e: any) => e.name).join(", ")}`;
+          context.equipment = profile.equipment.map((e: any) => e.name);
         }
         if (profile.preferences.cuisine_affinities) {
-          userContext += `\nCuisine preferences: ${(profile.preferences.cuisine_affinities as string[]).join(", ")}`;
+          context.cuisineAffinities = profile.preferences.cuisine_affinities;
         }
         if (profile.preferences.dietary_constraints) {
-          userContext += `\nDietary constraints: ${(profile.preferences.dietary_constraints as string[]).join(", ")}`;
+          context.dietaryConstraints = profile.preferences.dietary_constraints;
         }
         if (profile.preferences.dislikes) {
-          userContext += `\nDislikes: ${(profile.preferences.dislikes as string[]).join(", ")}`;
+          context.dislikes = profile.preferences.dislikes;
         }
-        if (params.maxMinutes) {
-          userContext += `\nMax total time: ${params.maxMinutes} minutes`;
+        if (profile.preferences.adventurousness) {
+          context.adventurousness = profile.preferences.adventurousness;
         }
-        if (params.servings) {
-          userContext += `\nServings: ${params.servings}`;
-        }
-        if (params.equipment?.length) {
-          userContext += `\nMust use: ${params.equipment.join(", ")}`;
-        }
+        if (params.maxMinutes) context.maxMinutes = params.maxMinutes;
+        if (params.servings) context.servings = params.servings;
+        if (params.equipment?.length) context.mustUse = params.equipment;
 
-        const client = new Anthropic({ apiKey });
-        const message = await client.messages.create({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
-          system: GENERATION_PROMPT,
-          messages: [
-            {
-              role: "user",
-              content: `${params.prompt}${userContext ? `\n\nUser context:${userContext}` : ""}`,
+        respond(true, {
+          ok: true,
+          action: "generate_and_save",
+          prompt: params.prompt,
+          userContext: context,
+          instructions:
+            `Generate a detailed recipe based on the prompt and user context. Be creative and adventurous. Then call save_generated_recipe with the result as JSON: { title, description, servings, prepMinutes, cookMinutes, ingredients: [{ name, quantity, unit, category }], instructions (markdown), tags }. Categories: protein, produce, dairy, pantry, spice, other.`,
+        });
+      } catch (error: any) {
+        respond(false, { ok: false, error: error.message });
+      }
+    },
+  };
+}
+
+export function createSaveGeneratedRecipeTool(
+  recipeRepo: RecipeRepository,
+) {
+  return {
+    name: "save_generated_recipe",
+    description:
+      "Save an AI-generated recipe to the database. Called after the agent generates a recipe via generate_recipe.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        description: { type: "string" },
+        servings: { type: "number" },
+        prepMinutes: { type: "number" },
+        cookMinutes: { type: "number" },
+        ingredients: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              quantity: { type: "number" },
+              unit: { type: "string" },
+              category: { type: "string" },
             },
-          ],
-        });
-
-        const text =
-          message.content[0].type === "text" ? message.content[0].text : "";
-
-        let parsed;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          respond(false, {
-            ok: false,
-            error: "Failed to parse generated recipe. The AI returned invalid JSON.",
-          });
-          return;
-        }
-
-        // Save the generated recipe
+            required: ["name"],
+          },
+        },
+        instructions: { type: "string" },
+        tags: { type: "array", items: { type: "string" } },
+      },
+      required: ["title", "instructions"],
+    },
+    handler: async (params: any, { respond }: any) => {
+      try {
         const recipe = await recipeRepo.create({
-          title: parsed.title,
-          description: parsed.description,
+          ...params,
           source: "ai_generated",
-          instructions: parsed.instructions,
-          servings: parsed.servings,
-          prepMinutes: parsed.prepMinutes,
-          cookMinutes: parsed.cookMinutes,
-          ingredients: parsed.ingredients,
-          tags: parsed.tags,
         });
-
         respond(true, { ok: true, recipe });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
