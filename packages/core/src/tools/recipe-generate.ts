@@ -1,5 +1,6 @@
 import { RecipeRepository } from "../repositories/recipe.repo.js";
 import { UserProfileRepository } from "../repositories/user-profile.repo.js";
+import { AutoTaggerService } from "../services/auto-tagger.service.js";
 
 /**
  * This tool doesn't call the Claude API directly — the agent IS Claude.
@@ -78,6 +79,7 @@ export function createGenerateRecipeTool(
 
 export function createSaveGeneratedRecipeTool(
   recipeRepo: RecipeRepository,
+  autoTagger?: AutoTaggerService,
 ) {
   return {
     name: "save_generated_recipe",
@@ -111,6 +113,9 @@ export function createSaveGeneratedRecipeTool(
     },
     handler: async (params: any, { respond }: any) => {
       try {
+        if (autoTagger) {
+          params.tags = await autoTagger.generateTags(params);
+        }
         const recipe = await recipeRepo.create({
           ...params,
           source: "ai_generated",

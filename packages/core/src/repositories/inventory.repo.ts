@@ -12,6 +12,8 @@ interface AddItemInput {
   expiresAt?: string;
   purchasedAt?: string;
   notes?: string;
+  isLeftover?: boolean;
+  sourceRecipeId?: string;
 }
 
 interface ListInput {
@@ -44,6 +46,8 @@ export class InventoryRepository {
       category: item.category ?? null,
       quantity: item.quantity ?? null,
       unit: item.unit ?? null,
+      isLeftover: item.isLeftover ? 1 : 0,
+      sourceRecipeId: item.sourceRecipeId ?? null,
       location: item.location ?? null,
       expiresAt: item.expiresAt ?? null,
       purchasedAt: item.purchasedAt ?? timestamp.split("T")[0],

@@ -4,6 +4,7 @@ import { RecipeRepository } from "../../src/repositories/recipe.repo.js";
 import { MealPlanRepository } from "../../src/repositories/meal-plan.repo.js";
 import { InventoryRepository } from "../../src/repositories/inventory.repo.js";
 import { GroceryRepository } from "../../src/repositories/grocery.repo.js";
+import { UserProfileRepository } from "../../src/repositories/user-profile.repo.js";
 import { GroceryGenerationService } from "../../src/services/grocery-generation.service.js";
 
 // Spec: specs/grocery/grocery-list.md
@@ -92,6 +93,7 @@ describe("GroceryGenerationService", () => {
   let mealPlanRepo: MealPlanRepository;
   let inventoryRepo: InventoryRepository;
   let groceryRepo: GroceryRepository;
+  let profileRepo: UserProfileRepository;
   let service: GroceryGenerationService;
 
   beforeEach(async () => {
@@ -101,7 +103,8 @@ describe("GroceryGenerationService", () => {
     mealPlanRepo = new MealPlanRepository(db);
     inventoryRepo = new InventoryRepository(db);
     groceryRepo = new GroceryRepository(db);
-    service = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo);
+    profileRepo = new UserProfileRepository(db);
+    service = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, profileRepo);
   });
 
   // Spec: "Collect all recipe_ingredients from every recipe in the plan"
@@ -209,5 +212,129 @@ describe("GroceryGenerationService", () => {
     const result = await service.generateFromPlan(plan.id);
     // Should only have ingredients from the one recipe, not from leftovers/skip
     expect(result.list.items).toHaveLength(1);
+  });
+
+  it("assigns proteins to butcherbox when user has subscription", async () => {
+    await profileRepo.setPreference("butcherbox_subscription", true);
+
+    const r1 = await recipeRepo.create({
+      title: "Seared Ribeye",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "ribeye", quantity: 1, unit: "lb", category: "protein" },
+        { name: "asparagus", quantity: 1, unit: "bunch", category: "produce" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const ribeye = result.list.items.find((i: any) => i.name === "ribeye");
+    const asparagus = result.list.items.find((i: any) => i.name === "asparagus");
+    expect(ribeye!.store).toBe("butcherbox");
+    expect(asparagus!.store).toBe("wegmans");
+  });
+
+  it("assigns proteins to wegmans when no butcherbox subscription", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Chicken Dinner",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "chicken thighs", quantity: 2, unit: "lbs", category: "protein" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const chicken = result.list.items.find((i: any) => i.name === "chicken thighs");
+    expect(chicken!.store).toBe("wegmans");
+  });
+
+  it("only routes known proteins to butcherbox, not all protein category items", async () => {
+    await profileRepo.setPreference("butcherbox_subscription", true);
+
+    const r1 = await recipeRepo.create({
+      title: "Surf and Turf",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "shrimp", quantity: 1, unit: "lb", category: "protein" },
+        { name: "salmon", quantity: 1, unit: "lb", category: "protein" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const shrimp = result.list.items.find((i: any) => i.name === "shrimp");
+    const salmon = result.list.items.find((i: any) => i.name === "salmon");
+    expect(shrimp!.store).toBe("wegmans");
+    expect(salmon!.store).toBe("butcherbox");
+  });
+
+  it("warns when weee order has few items", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Mapo Tofu",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "doubanjiang", quantity: 2, unit: "tbsp", category: "pantry" },
+        { name: "ground pork", quantity: 1, unit: "lb", category: "protein" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings.some((w: string) => w.includes("Weee!"))).toBe(true);
+    expect(result.warnings.some((w: string) => w.includes("$35"))).toBe(true);
+  });
+
+  it("does not warn when weee has enough items", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Korean Feast",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "gochujang", quantity: 2, unit: "tbsp", category: "pantry" },
+        { name: "miso", quantity: 1, unit: "tbsp", category: "pantry" },
+        { name: "tofu", quantity: 1, unit: "block", category: "protein" },
+        { name: "bok choy", quantity: 2, unit: "heads", category: "produce" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    expect(result.warnings).toHaveLength(0);
   });
 });

@@ -1,5 +1,6 @@
 import { InventoryRepository } from "../repositories/inventory.repo.js";
 import { RecipeRepository } from "../repositories/recipe.repo.js";
+import { UserProfileRepository } from "../repositories/user-profile.repo.js";
 
 interface DeductionResult {
   deducted: Array<{
@@ -13,12 +14,20 @@ interface DeductionResult {
     ingredient: string;
     reason: string;
   }>;
+  leftovers: {
+    created: boolean;
+    name: string | null;
+    portions: number | null;
+    location: string;
+    suggestFreezing: boolean;
+  };
 }
 
 export class InventoryDeductionService {
   constructor(
     private inventoryRepo: InventoryRepository,
-    private recipeRepo: RecipeRepository
+    private recipeRepo: RecipeRepository,
+    private profileRepo?: UserProfileRepository,
   ) {}
 
   async deductForRecipe(recipeId: string): Promise<DeductionResult> {
@@ -80,6 +89,44 @@ export class InventoryDeductionService {
       }
     }
 
-    return { deducted, unmatched };
+    // Leftover check: if recipe serves more than household, create leftover inventory item
+    const leftovers = await this.checkLeftovers(recipe);
+
+    return { deducted, unmatched, leftovers };
+  }
+
+  private async checkLeftovers(recipe: any): Promise<DeductionResult["leftovers"]> {
+    const noLeftovers = { created: false, name: null, portions: null, location: "fridge", suggestFreezing: false };
+
+    if (!recipe.servings) return noLeftovers;
+
+    let householdSize = 2;
+    if (this.profileRepo) {
+      const pref = await this.profileRepo.getPreference("household_size");
+      if (typeof pref === "number") householdSize = pref;
+    }
+
+    const extraPortions = recipe.servings - householdSize;
+    if (extraPortions <= 0) return noLeftovers;
+
+    const leftoverName = `Leftover: ${recipe.title}`;
+    const suggestFreezing = extraPortions >= 4;
+
+    await this.inventoryRepo.add([{
+      name: leftoverName,
+      quantity: extraPortions,
+      unit: "portions",
+      location: "fridge",
+      isLeftover: true,
+      sourceRecipeId: recipe.id,
+    }]);
+
+    return {
+      created: true,
+      name: leftoverName,
+      portions: extraPortions,
+      location: "fridge",
+      suggestFreezing,
+    };
   }
 }
