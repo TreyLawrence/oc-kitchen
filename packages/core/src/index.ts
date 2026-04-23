@@ -34,6 +34,10 @@ import { AutoTaggerService } from "./services/auto-tagger.service.js";
 import { createGenerateGroceryListTool } from "./tools/grocery-generate.js";
 import { createGetGroceryListTool } from "./tools/grocery-get.js";
 import { createUpdateGroceryListTool } from "./tools/grocery-update.js";
+import { OrderRepository } from "./repositories/order.repo.js";
+import { createStartOrderTool } from "./tools/order-start.js";
+import { createUpdateOrderTool } from "./tools/order-update.js";
+import { createGetOrderTool } from "./tools/order-get.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -98,6 +102,12 @@ const plugin = {
     api.registerTool(createGenerateGroceryListTool(groceryService));
     api.registerTool(createGetGroceryListTool(groceryRepo));
     api.registerTool(createUpdateGroceryListTool(groceryRepo));
+
+    // Order tools
+    const orderRepo = new OrderRepository(db);
+    api.registerTool(createStartOrderTool(orderRepo, groceryRepo));
+    api.registerTool(createUpdateOrderTool(orderRepo));
+    api.registerTool(createGetOrderTool(orderRepo));
   },
 };
 
