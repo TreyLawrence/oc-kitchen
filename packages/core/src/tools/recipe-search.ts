@@ -10,7 +10,7 @@ export function createSearchRecipesTool(repo: RecipeRepository) {
       properties: {
         query: { type: "string", description: "Free-text search across title and tags" },
         source: { type: "string", enum: ["manual", "imported", "ai_generated"] },
-        verdict: { type: "string", enum: ["banger", "make_again", "try_again_with_tweaks"] },
+        verdict: { type: "string", enum: ["banger", "make_again", "try_again_with_tweaks", "dont_make_again"] },
         favorite: { type: "boolean" },
         tags: { type: "array", items: { type: "string" }, description: "Filter by tags" },
         limit: { type: "number", description: "Max results (default 20)" },
