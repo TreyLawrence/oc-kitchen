@@ -19,6 +19,7 @@ The conversation happens asynchronously over whatever chat channel the user has 
 - As a user, multi-day recipes are scheduled properly (make stock Tuesday, use it in soup Wednesday)
 - As a user, I can go back and forth with the agent to tweak the plan
 - As a user, the plan respects my dietary constraints, equipment, and preferences
+- As a user, once I approve a plan, cooking time blocks are added to my Google Calendar so I know how long things take and don't double-book
 
 ### Explore vs Exploit
 - As a user, the agent suggests new cuisines and techniques to try, not just recipes I already know
@@ -213,6 +214,48 @@ Check Google Calendar for cooking availability. Returns not just free/busy, but 
 
 **Note:** Requires Google Calendar OAuth integration. The OpenClaw plugin config stores the OAuth token. If not connected, falls back to asking the user directly.
 
+### `block_cooking_time`
+Add cooking time blocks to Google Calendar for an approved meal plan. Called automatically when a plan moves to `"active"` status (with user permission).
+
+**Parameters:**
+```json
+{
+  "mealPlanId": "plan1",
+  "dinnerTargetTime": "19:30",        // when dinner should be on the table (default from prefs)
+  "includePrep": true                 // also block prep time for delegated prep (default true)
+}
+```
+
+**Process:**
+1. For each cooking entry in the plan, calculate start time by subtracting total time (prep + cook minutes) from `dinnerTargetTime`
+2. If prep is delegated to a helper, subtract only cook time from the user's block (prep gets its own separate block for the helper, if their calendar is connected)
+3. Create calendar events with recipe name, time breakdown, and a link/reference back to the recipe
+
+**Calendar event format:**
+- **Title:** "Cook: Gochujang Chicken (20p + 40c)"
+- **Start:** calculated from dinner target minus total time
+- **End:** `dinnerTargetTime`
+- **Description:** Recipe name, prep steps summary, any notes. For prep entries: "Prep: Chicken Stock — simmer 2hrs, mostly hands-off"
+- **Color:** Distinct calendar color so cooking blocks are visually identifiable
+
+**Success:**
+```json
+{
+  "ok": true,
+  "eventsCreated": [
+    { "date": "2026-04-27", "title": "Cook: Gochujang Chicken", "start": "18:30", "end": "19:30" },
+    { "date": "2026-04-28", "title": "Prep: Chicken Stock", "start": "19:00", "end": "21:00" },
+    { "date": "2026-04-29", "title": "Cook: Chicken Noodle Soup", "start": "18:30", "end": "19:30" }
+  ],
+  "skipped": [
+    { "date": "2026-04-30", "reason": "skip night — no cooking" },
+    { "date": "2026-05-01", "reason": "leftover night — no cooking" }
+  ]
+}
+```
+
+**Note:** Requires the same Google Calendar OAuth token used by `check_calendar`. If not connected, the agent tells the user the times but can't block them.
+
 ### `create_meal_plan`
 Save a plan to the database (usually after the user approves a suggestion).
 
@@ -308,6 +351,9 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 7. **Calendar integration:** Check Google Calendar for evening events. The agent calculates **available cooking time** per night — the gap between when the user can start cooking and when dinner needs to be ready (or the next event).
 8. **Time-constrained recipe selection:** Recipes are matched to available time. A night with 60 minutes gets a quick stir fry, not a braise. A free Saturday with 8 hours gets the brisket. The agent should say: "You have about 90 minutes Tuesday — I'm thinking the gochujang chicken (20 min prep + 40 min cook)."
 9. **User override:** The user can always override calendar suggestions: "Actually I can cook Thursday even though I have that meeting."
+10. **Calendar blocking:** When the user approves a plan and it goes active, the agent offers to block cooking time on their calendar via `block_cooking_time`. This prevents double-booking and shows the user exactly when to start cooking each night. Only cooking nights get blocks — leftover/takeout/skip nights are left open.
+11. **Calendar blocks update with plan changes.** If the user swaps a recipe or moves a meal to a different day, the agent updates the calendar blocks to match. Removing a cooking night deletes its block.
+12. **Hands-off time is noted, not blocked.** For recipes with long passive time (braising, slow smoking), the calendar block covers active time only. The description notes "Hands-off from 6:30–8:00pm" so the user knows they're free during that stretch.
 
 ### Leftovers & Portions
 9. **Leftover math:** Compare recipe servings to `household_size`. If servings > household_size, the extra portions are tracked. 2 extra portions = 1 additional meal covered.
@@ -344,7 +390,8 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 6. **Agent adjusts:** Proposes alternatives with trade-off explanations
 7. **Agent probes (explore):** "You haven't tried Ethiopian food yet — want me to find something? Or there's a cool fermentation technique I think you'd enjoy."
 8. **User approves:** "Looks good, let's do it"
-9. **Agent saves + offers grocery:** Creates plan as active, offers to generate grocery list
+9. **Agent saves + blocks calendar:** Creates plan as active, adds cooking time blocks to Google Calendar: "I've blocked out your cooking times — 6:30–7:30pm Monday for the gochujang chicken, 7–9pm Tuesday for the stock, etc. You'll see them on your calendar."
+10. **Agent offers grocery:** Offers to generate grocery list
 
 ## Edge Cases
 
@@ -353,7 +400,8 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 - No preferences set → trigger onboarding
 - All recipes are "don't make again" → lean heavily on explore
 - User wants to plan only specific days → support partial plans
-- Google Calendar not connected → fall back to asking the user directly
+- Google Calendar not connected → fall back to asking the user directly; can't block time, but still tell the user when to start cooking
+- Calendar block conflicts with a newly added event → agent notices on next check-in and suggests rescheduling that night's recipe or switching to something quicker
 - Multi-day recipe spans a skip day → warn and suggest rescheduling
 
 ## Connections to Other Specs

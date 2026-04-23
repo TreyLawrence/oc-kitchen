@@ -79,6 +79,8 @@ Individual meals within a plan. Each entry is a recipe (or custom text) assigned
 | day_of_week | integer NOT NULL | 0=Monday ... 6=Sunday |
 | meal_type | text NOT NULL | `"breakfast"`, `"lunch"`, `"dinner"`, `"snack"` |
 | custom_title | text | For non-recipe meals, e.g., "Leftover night" |
+| category | text | `"exploit"`, `"explore"`, `"leftover"`, `"prep"`, `"skip"` |
+| depends_on | text | Recipe ID this entry depends on (e.g., stock for soup) |
 | sort_order | integer | default 0 |
 
 ### inventory_items
@@ -152,7 +154,7 @@ Kitchen equipment owned by the user. Collected during onboarding.
 |--------|------|-------|
 | id | text PK | nanoid |
 | name | text NOT NULL | e.g., "Big Green Egg", "Instant Pot" |
-| category | text | `"grill"`, `"appliance"`, `"cookware"`, `"bakeware"`, `"tool"` |
+| category | text | `"grill"`, `"appliance"`, `"cookware"`, `"bakeware"`, `"outdoor"`, `"tool"` |
 | notes | text | |
 | created_at | text NOT NULL | ISO 8601 |
 
