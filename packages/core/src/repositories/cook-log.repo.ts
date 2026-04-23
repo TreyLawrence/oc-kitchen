@@ -50,4 +50,31 @@ export class CookLogRepository {
       .orderBy(desc(cookLog.cookedAt), desc(sql`rowid`))
       .all();
   }
+
+  async getRecentLogsWithRecipes(limit = 20) {
+    return this.db
+      .select({
+        id: cookLog.id,
+        recipeId: cookLog.recipeId,
+        verdict: cookLog.verdict,
+        notes: cookLog.notes,
+        modifications: cookLog.modifications,
+        cookedAt: cookLog.cookedAt,
+        recipeTitle: recipes.title,
+        recipeTags: recipes.tags,
+      })
+      .from(cookLog)
+      .innerJoin(recipes, eq(cookLog.recipeId, recipes.id))
+      .orderBy(desc(cookLog.cookedAt), desc(sql`cook_log.rowid`))
+      .limit(limit)
+      .all();
+  }
+
+  async getTotalCount(): Promise<number> {
+    const result = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(cookLog)
+      .get();
+    return result?.count ?? 0;
+  }
 }
