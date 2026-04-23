@@ -3,7 +3,12 @@ import { createTestDb } from "../../src/db/index.js";
 import { UserProfileRepository } from "../../src/repositories/user-profile.repo.js";
 import { AutoTaggerService } from "../../src/services/auto-tagger.service.js";
 
-// Spec: specs/recipes/recipe-management.md — Rule 5: auto-derived tags
+// Spec: specs/recipes/recipe-management.md — Rule 5: typed tag objects
+
+interface TypedTag {
+  tag: string;
+  type: "duration" | "equipment" | "cuisine" | "seasonal" | "user";
+}
 
 describe("AutoTaggerService", () => {
   let profileRepo: UserProfileRepository;
@@ -15,36 +20,52 @@ describe("AutoTaggerService", () => {
     tagger = new AutoTaggerService(profileRepo);
   });
 
+  describe("typed tag format", () => {
+    it("returns tag objects with tag and type fields", async () => {
+      const tags = await tagger.generateTags({
+        title: "Quick Eggs",
+        instructions: "Scramble them",
+        prepMinutes: 5,
+        cookMinutes: 10,
+      });
+      expect(tags.length).toBeGreaterThan(0);
+      for (const t of tags) {
+        expect(t).toHaveProperty("tag");
+        expect(t).toHaveProperty("type");
+      }
+    });
+  });
+
   describe("duration tags", () => {
-    it('tags "quick" for < 30 min total', async () => {
+    it('tags "quick" with type "duration" for < 30 min total', async () => {
       const tags = await tagger.generateTags({
         title: "Fast Stir Fry",
         instructions: "Cook it",
         prepMinutes: 10,
         cookMinutes: 15,
       });
-      expect(tags).toContain("quick");
+      expect(tags).toContainEqual({ tag: "quick", type: "duration" });
     });
 
-    it('tags "weeknight" for 30-59 min total', async () => {
+    it('tags "weeknight" with type "duration" for 30-59 min total', async () => {
       const tags = await tagger.generateTags({
         title: "Chicken Dinner",
         instructions: "Cook it",
         prepMinutes: 20,
         cookMinutes: 30,
       });
-      expect(tags).toContain("weeknight");
-      expect(tags).not.toContain("quick");
+      expect(tags).toContainEqual({ tag: "weeknight", type: "duration" });
+      expect(tags).not.toContainEqual({ tag: "quick", type: "duration" });
     });
 
-    it('tags "project" for 2+ hours', async () => {
+    it('tags "project" with type "duration" for 2+ hours', async () => {
       const tags = await tagger.generateTags({
         title: "Smoked Brisket",
         instructions: "Smoke it low and slow",
         prepMinutes: 30,
         cookMinutes: 480,
       });
-      expect(tags).toContain("project");
+      expect(tags).toContainEqual({ tag: "project", type: "duration" });
     });
 
     it("does not add duration tag for 60-119 min", async () => {
@@ -54,9 +75,8 @@ describe("AutoTaggerService", () => {
         prepMinutes: 20,
         cookMinutes: 70,
       });
-      expect(tags).not.toContain("quick");
-      expect(tags).not.toContain("weeknight");
-      expect(tags).not.toContain("project");
+      const durationTags = tags.filter((t) => t.type === "duration");
+      expect(durationTags).toHaveLength(0);
     });
 
     it("does not add duration tag when no times provided", async () => {
@@ -64,14 +84,13 @@ describe("AutoTaggerService", () => {
         title: "Mystery Dish",
         instructions: "Cook it",
       });
-      expect(tags).not.toContain("quick");
-      expect(tags).not.toContain("weeknight");
-      expect(tags).not.toContain("project");
+      const durationTags = tags.filter((t) => t.type === "duration");
+      expect(durationTags).toHaveLength(0);
     });
   });
 
   describe("equipment tags", () => {
-    it("tags equipment mentioned in title or instructions", async () => {
+    it('tags equipment with type "equipment"', async () => {
       await profileRepo.addEquipment([
         { name: "Big Green Egg", category: "grill" },
         { name: "Wok", category: "cookware" },
@@ -83,8 +102,8 @@ describe("AutoTaggerService", () => {
         prepMinutes: 20,
         cookMinutes: 180,
       });
-      expect(tags).toContain("big green egg");
-      expect(tags).not.toContain("wok");
+      expect(tags).toContainEqual({ tag: "big green egg", type: "equipment" });
+      expect(tags).not.toContainEqual({ tag: "wok", type: "equipment" });
     });
 
     it("matches equipment in instructions even if not in title", async () => {
@@ -98,46 +117,79 @@ describe("AutoTaggerService", () => {
         prepMinutes: 10,
         cookMinutes: 15,
       });
-      expect(tags).toContain("instant pot");
+      expect(tags).toContainEqual({ tag: "instant pot", type: "equipment" });
     });
 
     it("does not tag equipment the user doesn't own", async () => {
-      // No equipment added
       const tags = await tagger.generateTags({
         title: "Wok Stir Fry",
         instructions: "Heat the wok",
         prepMinutes: 10,
         cookMinutes: 10,
       });
-      // No equipment match since user has none
-      expect(tags).not.toContain("wok");
+      const equipTags = tags.filter((t) => t.type === "equipment");
+      expect(equipTags).toHaveLength(0);
     });
   });
 
-  describe("user tags preserved", () => {
-    it("preserves user-provided tags and adds auto tags", async () => {
+  describe("user tag preservation", () => {
+    it("preserves user-provided tags with type user and adds auto tags", async () => {
       const tags = await tagger.generateTags({
         title: "Quick Lunch",
         instructions: "Make it fast",
         prepMinutes: 5,
         cookMinutes: 10,
-        tags: ["lunch", "meal-prep"],
+        tags: [
+          { tag: "lunch", type: "user" },
+          { tag: "meal-prep", type: "user" },
+        ],
       });
-      expect(tags).toContain("lunch");
-      expect(tags).toContain("meal-prep");
-      expect(tags).toContain("quick");
+      expect(tags).toContainEqual({ tag: "lunch", type: "user" });
+      expect(tags).toContainEqual({ tag: "meal-prep", type: "user" });
+      expect(tags).toContainEqual({ tag: "quick", type: "duration" });
     });
 
-    it("deduplicates if user already added a duration tag", async () => {
+    it("replaces old auto-tags but keeps user tags on regeneration", async () => {
+      // Simulate a recipe that had "quick" but timing changed to "project"
+      const tags = await tagger.generateTags({
+        title: "Now Slow Dish",
+        instructions: "Low and slow",
+        prepMinutes: 30,
+        cookMinutes: 480,
+        tags: [
+          { tag: "date night", type: "user" },
+          { tag: "quick", type: "duration" }, // stale auto-tag
+        ],
+      });
+      expect(tags).toContainEqual({ tag: "date night", type: "user" });
+      expect(tags).toContainEqual({ tag: "project", type: "duration" });
+      expect(tags).not.toContainEqual({ tag: "quick", type: "duration" });
+    });
+
+    it("deduplicates tags by tag name within the same type", async () => {
       const tags = await tagger.generateTags({
         title: "Fast Dish",
         instructions: "Cook it",
         prepMinutes: 5,
         cookMinutes: 10,
-        tags: ["quick"],
+        tags: [{ tag: "quick", type: "duration" }],
       });
-      const quickCount = tags.filter((t) => t === "quick").length;
-      expect(quickCount).toBe(1);
+      const quickTags = tags.filter((t) => t.tag === "quick");
+      expect(quickTags).toHaveLength(1);
+    });
+
+    it("migrates plain string tags as user type", async () => {
+      // Legacy format: plain strings should be treated as user tags
+      const tags = await tagger.generateTags({
+        title: "Quick Lunch",
+        instructions: "Make it fast",
+        prepMinutes: 5,
+        cookMinutes: 10,
+        tags: ["lunch", "meal-prep"] as any,
+      });
+      expect(tags).toContainEqual({ tag: "lunch", type: "user" });
+      expect(tags).toContainEqual({ tag: "meal-prep", type: "user" });
+      expect(tags).toContainEqual({ tag: "quick", type: "duration" });
     });
   });
 });
