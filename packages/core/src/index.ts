@@ -11,6 +11,7 @@ import { createUpdateRecipeTool } from "./tools/recipe-update.js";
 import { createDeleteRecipeTool } from "./tools/recipe-delete.js";
 import { createLogCookTool } from "./tools/cook-log.js";
 import { createImportRecipeTool } from "./tools/recipe-import.js";
+import { createSaveImportedRecipeTool } from "./tools/recipe-import-save.js";
 import { createDiscoverRecipesTool } from "./tools/recipe-discover.js";
 import { createGenerateRecipeTool, createSaveGeneratedRecipeTool } from "./tools/recipe-generate.js";
 import { InventoryRepository } from "./repositories/inventory.repo.js";
@@ -73,6 +74,7 @@ const plugin = {
 
     // Recipe discovery tools
     api.registerTool(createImportRecipeTool(recipeRepo, autoTagger));
+    api.registerTool(createSaveImportedRecipeTool(recipeRepo, autoTagger));
     api.registerTool(createDiscoverRecipesTool(userProfileRepo));
     api.registerTool(createGenerateRecipeTool(userProfileRepo));
     api.registerTool(createSaveGeneratedRecipeTool(recipeRepo, autoTagger));

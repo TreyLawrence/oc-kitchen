@@ -1,4 +1,4 @@
-interface ParsedRecipe {
+export interface ParsedRecipe {
   title: string;
   description: string | null;
   ingredients: string[];
@@ -8,6 +8,10 @@ interface ParsedRecipe {
   servings: number | null;
   imageUrl: string | null;
 }
+
+export type FetchAndParseResult =
+  | { recipe: ParsedRecipe; parseMethod: "json-ld" }
+  | { html: string; parseMethod: "llm" };
 
 export class RecipeImportService {
   /**
@@ -126,12 +130,59 @@ export class RecipeImportService {
   }
 
   /**
+   * Strip HTML to readable text content for LLM extraction.
+   * Removes scripts, styles, nav, footer, and collapses whitespace.
+   */
+  static stripHtml(html: string): string {
+    let text = html;
+
+    // Remove script and style blocks entirely
+    text = text.replace(/<script[\s\S]*?<\/script>/gi, "");
+    text = text.replace(/<style[\s\S]*?<\/style>/gi, "");
+    text = text.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+
+    // Remove nav, header, footer elements (likely not recipe content)
+    text = text.replace(/<nav[\s\S]*?<\/nav>/gi, "");
+    text = text.replace(/<footer[\s\S]*?<\/footer>/gi, "");
+
+    // Remove HTML comments
+    text = text.replace(/<!--[\s\S]*?-->/g, "");
+
+    // Replace block-level tags with newlines
+    text = text.replace(/<\/(p|div|li|h[1-6]|tr|br\s*\/?)>/gi, "\n");
+    text = text.replace(/<br\s*\/?>/gi, "\n");
+
+    // Remove remaining HTML tags
+    text = text.replace(/<[^>]+>/g, " ");
+
+    // Decode common HTML entities
+    text = text.replace(/&amp;/g, "&");
+    text = text.replace(/&lt;/g, "<");
+    text = text.replace(/&gt;/g, ">");
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
+    text = text.replace(/&nbsp;/g, " ");
+    text = text.replace(/&#x27;/g, "'");
+    text = text.replace(/&frac12;/g, "½");
+    text = text.replace(/&frac13;/g, "⅓");
+    text = text.replace(/&frac14;/g, "¼");
+    text = text.replace(/&frac34;/g, "¾");
+
+    // Collapse whitespace: multiple spaces → single space, multiple newlines → double newline
+    text = text.replace(/[ \t]+/g, " ");
+    text = text.replace(/\n[ \t]+/g, "\n");
+    text = text.replace(/\n{3,}/g, "\n\n");
+
+    return text.trim();
+  }
+
+  /**
    * Fetch a URL and attempt to parse a recipe from it.
-   * Returns the parsed recipe and which method was used.
+   * Returns the parsed recipe (JSON-LD) or stripped HTML for LLM extraction.
    */
   static async fetchAndParse(
     url: string
-  ): Promise<{ recipe: ParsedRecipe; parseMethod: "json-ld" | "llm" } | null> {
+  ): Promise<FetchAndParseResult | null> {
     const response = await fetch(url, {
       headers: {
         "User-Agent":
@@ -152,8 +203,12 @@ export class RecipeImportService {
       return { recipe: jsonLdResult, parseMethod: "json-ld" };
     }
 
-    // TODO: LLM fallback — send HTML to Claude for extraction
-    // For now, return null to indicate parsing failed
-    return null;
+    // LLM fallback — strip HTML and return text for agent extraction
+    const stripped = RecipeImportService.stripHtml(html);
+    if (!stripped) {
+      return null;
+    }
+
+    return { html: stripped, parseMethod: "llm" };
   }
 }
