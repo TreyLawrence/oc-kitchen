@@ -1,7 +1,8 @@
 import { RecipeRepository } from "../repositories/recipe.repo.js";
 import { RecipeImportService } from "../services/recipe-import.service.js";
+import { AutoTaggerService } from "../services/auto-tagger.service.js";
 
-export function createImportRecipeTool(repo: RecipeRepository) {
+export function createImportRecipeTool(repo: RecipeRepository, autoTagger?: AutoTaggerService) {
   return {
     name: "import_recipe",
     description:
@@ -57,6 +58,16 @@ export function createImportRecipeTool(repo: RecipeRepository) {
           return { name: raw };
         });
 
+        let tags: string[] | undefined;
+        if (autoTagger) {
+          tags = await autoTagger.generateTags({
+            title: parsed.title,
+            instructions: parsed.instructions,
+            prepMinutes: parsed.prepMinutes,
+            cookMinutes: parsed.cookMinutes,
+          });
+        }
+
         const recipe = await repo.create({
           title: parsed.title,
           description: parsed.description ?? undefined,
@@ -68,6 +79,7 @@ export function createImportRecipeTool(repo: RecipeRepository) {
           servings: parsed.servings ?? undefined,
           imageUrl: parsed.imageUrl ?? undefined,
           ingredients,
+          tags,
         });
 
         respond(true, { ok: true, recipe, parseMethod });

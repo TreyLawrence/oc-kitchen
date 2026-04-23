@@ -2,6 +2,7 @@ import { RecipeRepository } from "../repositories/recipe.repo.js";
 import { MealPlanRepository } from "../repositories/meal-plan.repo.js";
 import { InventoryRepository } from "../repositories/inventory.repo.js";
 import { GroceryRepository } from "../repositories/grocery.repo.js";
+import { UserProfileRepository } from "../repositories/user-profile.repo.js";
 
 interface AggregatedIngredient {
   name: string;
@@ -24,17 +25,37 @@ const ASIAN_SPECIALTY_KEYWORDS = [
   "enoki", "shiitake", "king oyster mushroom",
 ];
 
+const BUTCHERBOX_PROTEINS = [
+  "chicken", "beef", "pork", "salmon", "steak",
+  "ground beef", "ground turkey", "turkey", "bacon", "sausage",
+  "lamb", "chicken breast", "chicken thigh",
+  "pork chop", "pork tenderloin",
+  "ribeye", "sirloin", "brisket", "short rib",
+];
+
+const STORE_MINIMUMS: Record<string, number> = {
+  weee: 35,
+};
+
 export class GroceryGenerationService {
   constructor(
     private recipeRepo: RecipeRepository,
     private mealPlanRepo: MealPlanRepository,
     private inventoryRepo: InventoryRepository,
     private groceryRepo: GroceryRepository,
+    private profileRepo?: UserProfileRepository,
   ) {}
 
   async generateFromPlan(mealPlanId: string, subtractInventory = true) {
     const plan = await this.mealPlanRepo.getById(mealPlanId);
     if (!plan) throw new Error("Meal plan not found");
+
+    // Check ButcherBox subscription
+    let hasButcherBox = false;
+    if (this.profileRepo) {
+      const bbPref = await this.profileRepo.getPreference("butcherbox_subscription");
+      hasButcherBox = bbPref === true;
+    }
 
     // 1. Collect ingredients from recipe entries (skip leftovers, skip, prep-only)
     const cookingEntries = plan.entries.filter(
@@ -134,7 +155,7 @@ export class GroceryGenerationService {
       quantity: ing.quantity,
       unit: ing.unit,
       category: ing.category,
-      store: this.assignStore(ing),
+      store: this.assignStore(ing, hasButcherBox),
       recipeId: ing.recipeIds[0],
     }));
 
@@ -155,15 +176,34 @@ export class GroceryGenerationService {
       storeBreakdown[store].itemCount++;
     }
 
+    // 7. Generate warnings for store minimums
+    const warnings: string[] = [];
+    for (const [store, minimum] of Object.entries(STORE_MINIMUMS)) {
+      if (storeBreakdown[store] && storeBreakdown[store].itemCount < 4) {
+        const storeName = store === "weee" ? "Weee!" : store;
+        warnings.push(
+          `${storeName} order has only ${storeBreakdown[store].itemCount} items — may be below their $${minimum} minimum. Consider adding staples or moving items to Wegmans.`
+        );
+      }
+    }
+
     return {
       list: fullList!,
       subtracted,
       storeBreakdown,
+      warnings,
     };
   }
 
-  private assignStore(ing: AggregatedIngredient): string {
+  private assignStore(ing: AggregatedIngredient, hasButcherBox: boolean): string {
     const nameLower = ing.name.toLowerCase();
+
+    // Check if it's a ButcherBox protein
+    if (hasButcherBox && ing.category === "protein") {
+      if (BUTCHERBOX_PROTEINS.some((p) => nameLower.includes(p))) {
+        return "butcherbox";
+      }
+    }
 
     // Check if it's an Asian specialty
     if (ASIAN_SPECIALTY_KEYWORDS.some((kw) => nameLower.includes(kw))) {

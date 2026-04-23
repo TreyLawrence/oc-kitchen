@@ -1,6 +1,7 @@
 import { RecipeRepository } from "../repositories/recipe.repo.js";
+import { AutoTaggerService } from "../services/auto-tagger.service.js";
 
-export function createCreateRecipeTool(repo: RecipeRepository) {
+export function createCreateRecipeTool(repo: RecipeRepository, autoTagger?: AutoTaggerService) {
   return {
     name: "create_recipe",
     description:
@@ -39,6 +40,9 @@ export function createCreateRecipeTool(repo: RecipeRepository) {
     },
     handler: async (params: any, { respond }: any) => {
       try {
+        if (autoTagger) {
+          params.tags = await autoTagger.generateTags(params);
+        }
         const recipe = await repo.create(params);
         respond(true, { ok: true, recipe });
       } catch (error: any) {

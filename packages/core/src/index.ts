@@ -28,6 +28,7 @@ import { createCheckCalendarTool } from "./tools/calendar-check.js";
 import { createGeneratePrepListTool } from "./tools/meal-plan-prep-list.js";
 import { GroceryRepository } from "./repositories/grocery.repo.js";
 import { GroceryGenerationService } from "./services/grocery-generation.service.js";
+import { AutoTaggerService } from "./services/auto-tagger.service.js";
 import { createGenerateGroceryListTool } from "./tools/grocery-generate.js";
 import { createGetGroceryListTool } from "./tools/grocery-get.js";
 import { createUpdateGroceryListTool } from "./tools/grocery-update.js";
@@ -53,14 +54,16 @@ const plugin = {
     const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo, userProfileRepo);
     const mealPlanRepo = new MealPlanRepository(db);
     const groceryRepo = new GroceryRepository(db);
-    const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo);
+    const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo);
+    const autoTagger = new AutoTaggerService(userProfileRepo);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
     api.registerTool(createGetUserPreferencesTool(userProfileRepo));
 
     // Recipe tools
-    api.registerTool(createCreateRecipeTool(recipeRepo));
+    api.registerTool(createCreateRecipeTool(recipeRepo, autoTagger));
+
     api.registerTool(createGetRecipeTool(recipeRepo, cookLogRepo));
     api.registerTool(createSearchRecipesTool(recipeRepo));
     api.registerTool(createUpdateRecipeTool(recipeRepo));
@@ -68,16 +71,16 @@ const plugin = {
     api.registerTool(createLogCookTool(cookLogRepo));
 
     // Recipe discovery tools
-    api.registerTool(createImportRecipeTool(recipeRepo));
+    api.registerTool(createImportRecipeTool(recipeRepo, autoTagger));
     api.registerTool(createDiscoverRecipesTool(userProfileRepo));
     api.registerTool(createGenerateRecipeTool(userProfileRepo));
-    api.registerTool(createSaveGeneratedRecipeTool(recipeRepo));
+    api.registerTool(createSaveGeneratedRecipeTool(recipeRepo, autoTagger));
 
     // Inventory tools
     api.registerTool(createListInventoryTool(inventoryRepo));
     api.registerTool(createUpdateInventoryTool(inventoryRepo));
     api.registerTool(createDeductRecipeIngredientsTool(deductionService));
-    api.registerTool(createVerifyInventoryTool(inventoryRepo));
+    api.registerTool(createVerifyInventoryTool(inventoryRepo, mealPlanRepo, recipeRepo));
 
     // Meal planning tools
     api.registerTool(createCreateMealPlanTool(mealPlanRepo));
