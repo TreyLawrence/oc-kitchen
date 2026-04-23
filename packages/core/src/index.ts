@@ -38,6 +38,8 @@ import { OrderRepository } from "./repositories/order.repo.js";
 import { createStartOrderTool } from "./tools/order-start.js";
 import { createUpdateOrderTool } from "./tools/order-update.js";
 import { createGetOrderTool } from "./tools/order-get.js";
+import { InventorySyncService } from "./services/inventory-sync.service.js";
+import { createSyncDeliveryToInventoryTool } from "./tools/inventory-sync.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -88,6 +90,8 @@ const plugin = {
     api.registerTool(createUpdateInventoryTool(inventoryRepo));
     api.registerTool(createDeductRecipeIngredientsTool(deductionService));
     api.registerTool(createVerifyInventoryTool(inventoryRepo, mealPlanRepo, recipeRepo));
+    const syncService = new InventorySyncService(inventoryRepo, groceryRepo);
+    api.registerTool(createSyncDeliveryToInventoryTool(syncService));
 
     // Meal planning tools
     api.registerTool(createCreateMealPlanTool(mealPlanRepo));
