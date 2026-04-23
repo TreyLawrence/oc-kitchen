@@ -40,7 +40,20 @@ export function createImportRecipeTool(repo: RecipeRepository, autoTagger?: Auto
           return;
         }
 
-        const { recipe: parsed, parseMethod } = result;
+        // LLM fallback: return HTML + instructions for agent extraction
+        if (result.parseMethod === "llm") {
+          respond(true, {
+            ok: true,
+            action: "llm_extract",
+            url: params.url,
+            pageText: result.html,
+            instructions:
+              `No JSON-LD structured data found on this page. Extract the recipe from the page text above and call save_imported_recipe with the result as JSON: { url, title, description, servings, prepMinutes, cookMinutes, ingredients: [{ name, quantity, unit, category }], instructions (markdown), tags }. Categories: protein, produce, dairy, pantry, spice, other. If the page does not contain a recipe, tell the user.`,
+          });
+          return;
+        }
+
+        const { recipe: parsed } = result;
 
         // Parse raw ingredient strings into structured data
         const ingredients = parsed.ingredients.map((raw: string) => {
@@ -82,7 +95,7 @@ export function createImportRecipeTool(repo: RecipeRepository, autoTagger?: Auto
           tags,
         });
 
-        respond(true, { ok: true, recipe, parseMethod });
+        respond(true, { ok: true, recipe, parseMethod: "json-ld" });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
       }
