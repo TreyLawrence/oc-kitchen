@@ -13,6 +13,12 @@ import { createLogCookTool } from "./tools/cook-log.js";
 import { createImportRecipeTool } from "./tools/recipe-import.js";
 import { createDiscoverRecipesTool } from "./tools/recipe-discover.js";
 import { createGenerateRecipeTool, createSaveGeneratedRecipeTool } from "./tools/recipe-generate.js";
+import { InventoryRepository } from "./repositories/inventory.repo.js";
+import { InventoryDeductionService } from "./services/inventory-deduction.service.js";
+import { createListInventoryTool } from "./tools/inventory-list.js";
+import { createUpdateInventoryTool } from "./tools/inventory-update.js";
+import { createDeductRecipeIngredientsTool } from "./tools/inventory-deduct.js";
+import { createVerifyInventoryTool } from "./tools/inventory-verify.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -31,6 +37,8 @@ const plugin = {
     const userProfileRepo = new UserProfileRepository(db);
     const recipeRepo = new RecipeRepository(db);
     const cookLogRepo = new CookLogRepository(db);
+    const inventoryRepo = new InventoryRepository(db);
+    const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
@@ -49,6 +57,12 @@ const plugin = {
     api.registerTool(createDiscoverRecipesTool(userProfileRepo));
     api.registerTool(createGenerateRecipeTool(userProfileRepo));
     api.registerTool(createSaveGeneratedRecipeTool(recipeRepo));
+
+    // Inventory tools
+    api.registerTool(createListInventoryTool(inventoryRepo));
+    api.registerTool(createUpdateInventoryTool(inventoryRepo));
+    api.registerTool(createDeductRecipeIngredientsTool(deductionService));
+    api.registerTool(createVerifyInventoryTool(inventoryRepo));
   },
 };
 
