@@ -93,6 +93,9 @@ The automation uses OpenClaw's computer-use API:
 5. **Issues** → "Can't find gochugaru at Wegmans. Want me to skip it or try a substitute?"
 6. **Completion** → "Wegmans cart is ready — 11 items, $67.43 total. Go to wegmans.com to review and place the order."
 7. **Post-order** → "Once your groceries arrive, let me know and I'll update your inventory."
+8. **Delivery follow-up** → The next day (or after expected delivery time), the agent proactively asks: "Did your Wegmans order arrive?" If yes, it calls `update_inventory` to add all ordered items (with quantities and estimated expiration dates for perishables). If the user says some items were substituted or missing, the agent adjusts.
+
+**Delivery follow-up scheduling:** After an order is submitted, the agent sets a standing order to check in after the expected delivery window. For Wegmans same-day pickup, this might be that evening. For Weee! delivery, the next day.
 
 ## Edge Cases
 

@@ -99,11 +99,12 @@ Automatically deduct a recipe's ingredients from inventory after cooking. Matche
 ```
 
 **Process:**
-1. Load the recipe's ingredients
+1. Load the recipe's ingredients and servings
 2. For each ingredient, fuzzy-match against inventory items (by name)
 3. Subtract the recipe's quantity from the matched inventory item
 4. If quantity reaches 0 or below, remove the inventory item
 5. Report what was deducted and what couldn't be matched
+6. **Leftover check:** Compare recipe servings to `household_size` from user preferences. If servings > household_size, create a leftover inventory item (name: "Leftover: {recipe title}", `isLeftover: true`, `sourceRecipeId: recipeId`, location: "fridge", portions = servings - household_size). Suggest freezing if 4+ extra portions.
 
 **Success:**
 ```json
@@ -115,7 +116,14 @@ Automatically deduct a recipe's ingredients from inventory after cooking. Matche
   ],
   "unmatched": [
     { "ingredient": "green onions", "reason": "not found in inventory" }
-  ]
+  ],
+  "leftovers": {
+    "created": true,
+    "name": "Leftover: Gochujang Chicken",
+    "portions": 2,
+    "location": "fridge",
+    "suggestFreezing": false
+  }
 }
 ```
 
