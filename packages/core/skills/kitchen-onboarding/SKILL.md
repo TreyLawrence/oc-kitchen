@@ -1,6 +1,6 @@
 ---
 name: kitchen-onboarding
-description: Set up a new user's kitchen profile — equipment, cuisine preferences, dietary constraints
+description: Set up a new user's kitchen profile — equipment, preferences, household, helpers, and cooking schedule
 ---
 
 # Kitchen Onboarding
@@ -9,49 +9,59 @@ Use this skill when interacting with a user who hasn't set up their kitchen prof
 
 ## When to activate
 
-- First time the user interacts with OC Kitchen (no preferences or equipment found)
+- First time the user interacts with OC Kitchen (no preferences or equipment found via `get_user_preferences`)
 - User says "update my preferences", "I got new equipment", "add my kitchen tools"
-- User mentions dietary changes
+- User mentions dietary changes or household changes
 
 ## Tools available
 
-- `update_inventory` — Can be used to set up initial pantry items
-- `get_user_preferences` — Check if preferences exist (empty = needs onboarding)
+- `update_user_profile` — add/remove equipment, set preferences
+- `get_user_preferences` — check if profile exists (empty = needs onboarding)
 
 ## Onboarding flow
 
+Keep it conversational — one or two questions at a time. Save as you go.
+
 ### Step 1: Equipment
-Ask what cooking equipment they have. Suggest common categories:
-- **Outdoor**: grill (charcoal/gas/kamado), smoker, pizza oven, deep fryer
-- **Stovetop**: wok, cast iron skillet, dutch oven, stock pot, saucepans
-- **Appliances**: stand mixer, food processor, blender, Instant Pot, rice cooker, slow cooker, air fryer, sous vide
-- **Bakeware**: sheet pans, pizza steel/stone, bread pans, muffin tins
-- **Specialty**: mandoline, mortar and pestle, pasta machine, torch, thermometer
+Ask what cooking equipment they have. Accept natural language ("I've got a Big Green Egg, Instant Pot, and a Zojirushi rice cooker"). Suggest categories if they need prompts:
+- **Outdoor**: grill, smoker, pizza oven, deep fryer
+- **Stovetop**: wok, cast iron skillet, dutch oven, stock pot
+- **Appliances**: Instant Pot, rice cooker, stand mixer, food processor, blender, air fryer, sous vide
+- **Bakeware**: sheet pans, pizza steel, bread pans
+- **Tools**: mandoline, mortar and pestle, pasta machine, thermometer, scale
 
-Let the user list what they have — don't make them go through every category. Accept natural language ("I've got a Big Green Egg, Instant Pot, and a Zojirushi rice cooker").
+### Step 2: Cuisine preferences & adventurousness
+Ask what kinds of food they love. Then ask about their appetite for new recipes vs proven favorites:
 
-### Step 2: Cuisine preferences
-Ask what kinds of food they love cooking and eating. Examples:
-- Korean, Japanese, Chinese, Thai, Vietnamese, Indian
-- Mexican, Peruvian, Brazilian
-- Italian, French, Spanish, Greek
-- BBQ, Southern, Cajun
-- Middle Eastern, Ethiopian, Moroccan
+"When I plan your meals each week, how much do you want me to push you toward new recipes vs sticking with hits? Options:"
+- **"I want mostly new stuff"** → `very_adventurous`, explore_ratio ~0.65
+- **"Healthy mix, leaning new"** → `adventurous`, explore_ratio ~0.45
+- **"Even split"** → `balanced`, explore_ratio ~0.30
+- **"Mostly my favorites"** → `comfort_focused`, explore_ratio ~0.15
 
-Also ask: "Are you an adventurous cook who wants to be pushed, or do you prefer sticking to what you know?"
+This directly controls how many new vs proven recipes appear in weekly meal plans. They can always adjust later ("more new stuff this week" or "give me comfort food").
 
-### Step 3: Dietary constraints
-Ask about any restrictions:
-- Allergies (nuts, shellfish, dairy, etc.)
-- Dietary preferences (vegetarian, vegan, pescatarian, keto, etc.)
-- Dislikes ("I hate cilantro", "no organ meats")
+### Step 3: Favorite recipe sources
+Ask: "What food blogs or recipe sites do you love? I'll keep an eye on them for new recipe ideas." Store as `favorite_sources`. Examples: bonappetit.com, cooking.nytimes.com, thewoksoflife.com, seriouseats.com.
 
-### Step 4: Household
-Ask how many people they typically cook for. This sets default servings.
+### Step 4: Dietary constraints
+Ask about allergies, dietary preferences, and strong dislikes.
+
+### Step 5: Household
+Ask:
+- How many people do you typically cook for? (sets `household_size` and `default_servings`)
+- Does anyone in the household help with cooking or prep? If so, who and what can they do? (sets `household_helpers` — e.g., nanny can chop/measure during baby's nap)
+
+### Step 6: Cooking schedule
+Ask:
+- What time do you usually start cooking on weeknights? (sets `cooking_window_start`, default "17:00")
+- What time do you like to eat dinner? (sets `dinner_target_time`, default "19:30")
+- Want me to check your Google Calendar to see which nights you're free? (triggers calendar OAuth setup if desired)
 
 ## Behavior
 
-1. Keep it conversational, not a form. One or two questions at a time.
+1. Keep it conversational, not exhaustive. One or two questions at a time.
 2. Save preferences as you go — don't wait until the end.
 3. If the user seems impatient, skip ahead: "We can always update this later."
-4. After onboarding, summarize what you learned and suggest trying recipe discovery.
+4. Normalize equipment names — "BGE" → "Big Green Egg", "IP" → "Instant Pot".
+5. After onboarding, summarize what you learned and suggest trying recipe discovery: "Want me to find some recipes from Bon Appetit to get started?"

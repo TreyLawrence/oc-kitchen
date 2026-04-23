@@ -19,6 +19,13 @@ import { createListInventoryTool } from "./tools/inventory-list.js";
 import { createUpdateInventoryTool } from "./tools/inventory-update.js";
 import { createDeductRecipeIngredientsTool } from "./tools/inventory-deduct.js";
 import { createVerifyInventoryTool } from "./tools/inventory-verify.js";
+import { MealPlanRepository } from "./repositories/meal-plan.repo.js";
+import { createCreateMealPlanTool } from "./tools/meal-plan-create.js";
+import { createGetMealPlanTool } from "./tools/meal-plan-get.js";
+import { createUpdateMealPlanTool } from "./tools/meal-plan-update.js";
+import { createSuggestMealPlanTool } from "./tools/meal-plan-suggest.js";
+import { createCheckCalendarTool } from "./tools/calendar-check.js";
+import { createGeneratePrepListTool } from "./tools/meal-plan-prep-list.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -39,6 +46,7 @@ const plugin = {
     const cookLogRepo = new CookLogRepository(db);
     const inventoryRepo = new InventoryRepository(db);
     const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo);
+    const mealPlanRepo = new MealPlanRepository(db);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
@@ -63,6 +71,14 @@ const plugin = {
     api.registerTool(createUpdateInventoryTool(inventoryRepo));
     api.registerTool(createDeductRecipeIngredientsTool(deductionService));
     api.registerTool(createVerifyInventoryTool(inventoryRepo));
+
+    // Meal planning tools
+    api.registerTool(createCreateMealPlanTool(mealPlanRepo));
+    api.registerTool(createGetMealPlanTool(mealPlanRepo));
+    api.registerTool(createUpdateMealPlanTool(mealPlanRepo));
+    api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo));
+    api.registerTool(createCheckCalendarTool(userProfileRepo));
+    api.registerTool(createGeneratePrepListTool(recipeRepo));
   },
 };
 

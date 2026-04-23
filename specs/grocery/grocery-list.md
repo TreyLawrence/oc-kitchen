@@ -120,9 +120,10 @@ Modify a grocery list — add/remove items, reassign stores, check items, change
 1. **Ingredient aggregation** — if two recipes both need "onion", combine into a single list item with summed quantity. Fuzzy match on name ("yellow onion" and "onion" are the same).
 2. **Inventory subtraction** — match inventory items against the ingredient list. If the inventory has enough, skip the item. If partial, reduce the quantity. Report what was subtracted so the user can verify.
 3. **Store assignment defaults:**
-   - **Wegmans is the primary store.** Everything goes to Wegmans unless it's a specialty item.
-   - Asian specialty ingredients (gochugaru, doubanjiang, mirin, nori, specific tofu varieties, bok choy, etc.) → Weee!
-   - If Wegmans is likely to carry it (even if it's Asian-adjacent, like soy sauce or rice) → keep it at Wegmans.
+   - **Proteins → ButcherBox first.** If the user has a ButcherBox subscription and the protein is something BB carries (chicken, beef, pork, salmon, etc.), assign it to ButcherBox. Check if the customization window for the next box is still open. If BB can't cover it (wrong timing, not available), fall back to Wegmans.
+   - **Asian specialty ingredients** (gochugaru, doubanjiang, mirin, nori, specific tofu varieties, bok choy, etc.) → Weee!
+   - **Everything else** → Wegmans (primary store)
+   - If Wegmans is likely to carry it (even if it's Asian-adjacent, like soy sauce or rice) → keep at Wegmans.
    - When in doubt → Wegmans
 4. **Minimum order thresholds.** Each store plugin declares a minimum order amount (e.g., Weee! = $35). If a store's assigned items fall below the minimum, the agent warns the user:
    - "Your Weee! order is only $12 — their minimum is $35. Want to add more items, move these to Wegmans, or skip this order?"

@@ -6,7 +6,8 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/store-wegmans" },
-    { "path": "packages/store-weee" }
+    { "path": "packages/store-weee" },
+    { "path": "packages/store-butcherbox" }
   ],
   "include": []
 }

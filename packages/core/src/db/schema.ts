@@ -71,6 +71,8 @@ export const mealPlanEntries = sqliteTable("meal_plan_entries", {
   dayOfWeek: integer("day_of_week").notNull(), // 0=Monday ... 6=Sunday
   mealType: text("meal_type").notNull(), // "breakfast" | "lunch" | "dinner" | "snack"
   customTitle: text("custom_title"),
+  category: text("category"), // "exploit" | "explore" | "leftover" | "prep" | "skip"
+  dependsOn: text("depends_on"), // recipe ID this entry depends on (e.g., stock → soup)
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
@@ -82,6 +84,8 @@ export const inventoryItems = sqliteTable("inventory_items", {
   category: text("category"),
   quantity: real("quantity"),
   unit: text("unit"),
+  isLeftover: integer("is_leftover", { mode: "boolean" }).default(false),
+  sourceRecipeId: text("source_recipe_id").references(() => recipes.id),
   location: text("location"), // "fridge", "freezer", "pantry"
   expiresAt: text("expires_at"),
   purchasedAt: text("purchased_at"),
