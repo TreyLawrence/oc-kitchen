@@ -83,6 +83,17 @@ export class RecipeRepository {
     return this.db.select().from(recipes).where(eq(recipes.id, id)).get()!;
   }
 
+  async findBySourceUrl(url: string) {
+    // Normalize trailing slashes for comparison
+    const normalized = url.replace(/\/+$/, "");
+    const row = this.db
+      .select()
+      .from(recipes)
+      .where(sql`RTRIM(${recipes.sourceUrl}, '/') = ${normalized}`)
+      .get();
+    return row ?? null;
+  }
+
   async getById(id: string) {
     const recipe = this.db.select().from(recipes).where(eq(recipes.id, id)).get();
     if (!recipe) return null;

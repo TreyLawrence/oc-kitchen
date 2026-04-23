@@ -3,6 +3,7 @@ import { RecipeImportService } from "../../src/services/recipe-import.service.js
 import { createTestDb } from "../../src/db/index.js";
 import { RecipeRepository } from "../../src/repositories/recipe.repo.js";
 import { createSaveImportedRecipeTool } from "../../src/tools/recipe-import-save.js";
+import { createImportRecipeTool } from "../../src/tools/recipe-import.js";
 
 // Spec: specs/recipes/recipe-management.md — import_recipe tool
 // Spec: Design Decision 2 — "Hybrid: JSON-LD first, LLM fallback"
@@ -223,5 +224,107 @@ describe("save_imported_recipe tool", () => {
 
     // Should fail due to missing instructions (repo requires it)
     expect(respond).toHaveBeenCalledWith(false, expect.objectContaining({ ok: false }));
+  });
+
+  // Spec: Behavior Rule 9 — "Duplicate detection: warn when importing a URL that already exists"
+  it("warns when URL has already been imported via save_imported_recipe", async () => {
+    const respond = vi.fn();
+    const url = "https://www.bonappetit.com/recipe/gochujang-chicken";
+
+    // First import
+    await tool.handler(
+      {
+        url,
+        title: "Gochujang Chicken",
+        instructions: "Roast it",
+        ingredients: [{ name: "chicken", quantity: 2, unit: "lbs" }],
+      },
+      { respond }
+    );
+    expect(respond).toHaveBeenCalledWith(true, expect.objectContaining({ ok: true }));
+
+    // Second import of same URL
+    const respond2 = vi.fn();
+    await tool.handler(
+      {
+        url,
+        title: "Gochujang Chicken Again",
+        instructions: "Roast it again",
+      },
+      { respond: respond2 }
+    );
+
+    expect(respond2).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        ok: true,
+        warning: expect.stringContaining("already been imported"),
+        duplicateId: expect.any(String),
+      })
+    );
+    // Should return the existing recipe, not create a new one
+    expect(respond2.mock.calls[0][1].recipe.title).toBe("Gochujang Chicken");
+  });
+});
+
+// Spec: Behavior Rule 9 — duplicate detection in import_recipe tool
+describe("import_recipe duplicate detection", () => {
+  let recipeRepo: RecipeRepository;
+  let tool: ReturnType<typeof createImportRecipeTool>;
+
+  beforeEach(() => {
+    const { db } = createTestDb();
+    recipeRepo = new RecipeRepository(db);
+    tool = createImportRecipeTool(recipeRepo);
+  });
+
+  it("warns when URL was already imported and returns existing recipe", async () => {
+    // Pre-seed a recipe with a sourceUrl
+    const existing = await recipeRepo.create({
+      title: "Mapo Tofu",
+      source: "imported",
+      sourceUrl: "https://thewoksoflife.com/mapo-tofu/",
+      instructions: "Cook the tofu",
+    });
+
+    const respond = vi.fn();
+    await tool.handler(
+      { url: "https://thewoksoflife.com/mapo-tofu/" },
+      { respond }
+    );
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        ok: true,
+        warning: expect.stringContaining("already been imported"),
+        duplicateId: existing.id,
+      })
+    );
+    expect(respond.mock.calls[0][1].recipe.title).toBe("Mapo Tofu");
+  });
+
+  it("detects duplicates even with trailing slash differences", async () => {
+    await recipeRepo.create({
+      title: "Mapo Tofu",
+      source: "imported",
+      sourceUrl: "https://thewoksoflife.com/mapo-tofu/",
+      instructions: "Cook the tofu",
+    });
+
+    const respond = vi.fn();
+    // Query without trailing slash
+    await tool.handler(
+      { url: "https://thewoksoflife.com/mapo-tofu" },
+      { respond }
+    );
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        ok: true,
+        warning: expect.stringContaining("already been imported"),
+      })
+    );
   });
 });
