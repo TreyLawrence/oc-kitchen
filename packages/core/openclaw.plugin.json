@@ -1,0 +1,22 @@
+{
+  "id": "oc-kitchen",
+  "name": "OC Kitchen",
+  "description": "Recipe management, meal planning, kitchen inventory, and grocery list generation",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "dbPath": {
+        "type": "string",
+        "description": "Path to SQLite database file (default: ~/.openclaw/oc-kitchen/kitchen.db)"
+      }
+    },
+    "additionalProperties": false
+  },
+  "skills": [
+    "skills/kitchen-onboarding",
+    "skills/meal-planning",
+    "skills/recipe-discovery",
+    "skills/cook-logging"
+  ]
+}

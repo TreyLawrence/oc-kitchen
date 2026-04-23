@@ -1,0 +1,28 @@
+{
+  "id": "oc-kitchen-weee",
+  "name": "OC Kitchen — Weee!",
+  "description": "Automated grocery ordering from Weee! via computer-use agent",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "email": {
+        "type": "string",
+        "description": "Weee! account email"
+      },
+      "password": {
+        "type": "string",
+        "description": "Weee! account password"
+      },
+      "minimumOrder": {
+        "type": "number",
+        "description": "Minimum order amount in dollars (default: 35)",
+        "default": 35
+      }
+    },
+    "additionalProperties": false
+  },
+  "skills": [
+    "skills/weee-ordering"
+  ]
+}

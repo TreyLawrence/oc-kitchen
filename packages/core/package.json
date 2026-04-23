@@ -1,0 +1,36 @@
+{
+  "name": "oc-kitchen",
+  "version": "0.1.0",
+  "description": "Recipe management, meal planning, kitchen inventory, and grocery list generation for OpenClaw",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist/",
+    "skills/",
+    "openclaw.plugin.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "openclaw": {
+    "extensions": [
+      "dist/index.js"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "better-sqlite3": "^12.9.0",
+    "drizzle-orm": "^0.45.2",
+    "nanoid": "^5.1.9",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.31.10"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.1.26"
+  }
+}
