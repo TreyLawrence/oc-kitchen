@@ -89,11 +89,15 @@ export function createTestDb() {
       day_of_week integer NOT NULL,
       meal_type text NOT NULL,
       custom_title text,
+      category text,
+      depends_on text,
       sort_order integer DEFAULT 0 NOT NULL
     );
     CREATE TABLE inventory_items (
       id text PRIMARY KEY NOT NULL,
       name text NOT NULL,
+      is_leftover integer DEFAULT false,
+      source_recipe_id text REFERENCES recipes(id),
       category text,
       quantity real,
       unit text,
