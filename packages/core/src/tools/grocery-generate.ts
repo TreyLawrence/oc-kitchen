@@ -10,6 +10,7 @@ export function createGenerateGroceryListTool(service: GroceryGenerationService)
       properties: {
         mealPlanId: { type: "string", description: "Meal plan ID to generate from" },
         subtractInventory: { type: "boolean", description: "Subtract kitchen inventory (default: true)" },
+        includePantryStaples: { type: "boolean", description: "Include common pantry staples like salt, pepper, olive oil (default: false)" },
       },
       required: ["mealPlanId"],
     },
@@ -18,6 +19,7 @@ export function createGenerateGroceryListTool(service: GroceryGenerationService)
         const result = await service.generateFromPlan(
           params.mealPlanId,
           params.subtractInventory ?? true,
+          params.includePantryStaples ?? false,
         );
         respond(true, { ok: true, ...result });
       } catch (error: any) {

@@ -33,6 +33,22 @@ const BUTCHERBOX_PROTEINS = [
   "ribeye", "sirloin", "brisket", "short rib",
 ];
 
+const PANTRY_STAPLES = [
+  "salt", "pepper", "black pepper",
+  "olive oil", "vegetable oil", "canola oil",
+  "butter",
+  "flour", "all-purpose flour",
+  "sugar", "granulated sugar", "brown sugar",
+  "baking soda", "baking powder",
+  "garlic powder", "onion powder",
+  "paprika", "cumin", "oregano", "thyme",
+  "bay leaf", "bay leaves",
+  "cinnamon", "vanilla extract",
+  "apple cider vinegar", "red wine vinegar", "white vinegar",
+  "honey",
+  "water", "ice",
+];
+
 const STORE_MINIMUMS: Record<string, number> = {
   weee: 35,
 };
@@ -46,7 +62,7 @@ export class GroceryGenerationService {
     private profileRepo?: UserProfileRepository,
   ) {}
 
-  async generateFromPlan(mealPlanId: string, subtractInventory = true) {
+  async generateFromPlan(mealPlanId: string, subtractInventory = true, includePantryStaples = false) {
     const plan = await this.mealPlanRepo.getById(mealPlanId);
     if (!plan) throw new Error("Meal plan not found");
 
@@ -149,7 +165,32 @@ export class GroceryGenerationService {
       }
     }
 
-    // 4. Assign stores
+    // 4. Exclude pantry staples (unless opted in)
+    if (!includePantryStaples) {
+      for (const [key, ing] of aggregated) {
+        const nameLower = ing.name.toLowerCase();
+        if (!PANTRY_STAPLES.some((s) => nameLower === s)) continue;
+
+        // Check if inventory says "running low" or "need more"
+        const invMatch = await this.inventoryRepo.findByName(ing.name);
+        if (invMatch?.notes) {
+          const notesLower = invMatch.notes.toLowerCase();
+          if (notesLower.includes("running low") || notesLower.includes("need more")) {
+            continue; // Keep on list — user needs to restock
+          }
+        }
+
+        subtracted.push({
+          name: ing.name,
+          had: "assumed",
+          needed: `${ing.quantity || "some"} ${ing.unit || ""}`.trim(),
+          result: "pantry staple",
+        });
+        aggregated.delete(key);
+      }
+    }
+
+    // 5. Assign stores
     const items = Array.from(aggregated.values()).map((ing) => ({
       name: ing.name,
       quantity: ing.quantity,
@@ -159,7 +200,7 @@ export class GroceryGenerationService {
       recipeId: ing.recipeIds[0],
     }));
 
-    // 5. Create the list
+    // 6. Create the list
     const list = await this.groceryRepo.create({
       name: plan.name,
       mealPlanId,
@@ -168,7 +209,7 @@ export class GroceryGenerationService {
 
     const fullList = await this.groceryRepo.getById(list.id);
 
-    // 6. Calculate store breakdown
+    // 7. Calculate store breakdown
     const storeBreakdown: Record<string, { itemCount: number }> = {};
     for (const item of fullList!.items) {
       const store = item.store || "unassigned";
@@ -176,7 +217,7 @@ export class GroceryGenerationService {
       storeBreakdown[store].itemCount++;
     }
 
-    // 7. Generate warnings for store minimums
+    // 8. Generate warnings for store minimums
     const warnings: string[] = [];
     for (const [store, minimum] of Object.entries(STORE_MINIMUMS)) {
       if (storeBreakdown[store] && storeBreakdown[store].itemCount < 4) {
