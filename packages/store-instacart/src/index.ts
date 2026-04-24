@@ -1,3 +1,5 @@
+import { createOrderInstacartTool } from "./tools/order-instacart.js";
+
 interface PluginApi {
   registerTool(tool: unknown): void;
 }
@@ -8,7 +10,7 @@ const plugin = {
   description: "Automated grocery ordering from any Instacart-supported retailer via computer-use agent",
 
   register(api: PluginApi) {
-    // order_instacart tool will be registered here
+    api.registerTool(createOrderInstacartTool());
   },
 };
 
