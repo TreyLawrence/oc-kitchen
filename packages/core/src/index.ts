@@ -31,6 +31,7 @@ import { createGeneratePrepListTool } from "./tools/meal-plan-prep-list.js";
 import { GroceryRepository } from "./repositories/grocery.repo.js";
 import { GroceryGenerationService } from "./services/grocery-generation.service.js";
 import { AutoTaggerService } from "./services/auto-tagger.service.js";
+import { PreferenceSummaryService } from "./services/preference-summary.service.js";
 import { createGenerateGroceryListTool } from "./tools/grocery-generate.js";
 import { createGetGroceryListTool } from "./tools/grocery-get.js";
 import { createUpdateGroceryListTool } from "./tools/grocery-update.js";
@@ -64,6 +65,7 @@ const plugin = {
     const groceryRepo = new GroceryRepository(db);
     const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo);
     const autoTagger = new AutoTaggerService(userProfileRepo);
+    const preferenceSummary = new PreferenceSummaryService(cookLogRepo, userProfileRepo);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
@@ -76,7 +78,7 @@ const plugin = {
     api.registerTool(createSearchRecipesTool(recipeRepo));
     api.registerTool(createUpdateRecipeTool(recipeRepo));
     api.registerTool(createDeleteRecipeTool(recipeRepo));
-    api.registerTool(createLogCookTool(cookLogRepo));
+    api.registerTool(createLogCookTool(cookLogRepo, recipeRepo, preferenceSummary));
 
     // Recipe discovery tools
     api.registerTool(createImportRecipeTool(recipeRepo, autoTagger));
@@ -97,7 +99,7 @@ const plugin = {
     api.registerTool(createCreateMealPlanTool(mealPlanRepo));
     api.registerTool(createGetMealPlanTool(mealPlanRepo));
     api.registerTool(createUpdateMealPlanTool(mealPlanRepo));
-    api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo));
+    api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo, preferenceSummary));
     api.registerTool(createCheckCalendarTool(userProfileRepo));
     api.registerTool(createBlockCookingTimeTool(userProfileRepo, mealPlanRepo, recipeRepo));
     api.registerTool(createGeneratePrepListTool(recipeRepo, mealPlanRepo, userProfileRepo));
