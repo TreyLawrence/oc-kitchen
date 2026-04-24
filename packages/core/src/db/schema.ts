@@ -114,7 +114,7 @@ export const groceryItems = sqliteTable("grocery_items", {
   quantity: real("quantity"),
   unit: text("unit"),
   category: text("category"),
-  store: text("store"), // "wegmans" | "weee" | null
+  store: text("store"), // "instacart" | "weee" | null
   isChecked: integer("is_checked", { mode: "boolean" }).default(false),
   recipeId: text("recipe_id").references(() => recipes.id),
   sortOrder: integer("sort_order").notNull().default(0),

@@ -1,7 +1,7 @@
 {
-  "name": "oc-kitchen-wegmans",
+  "name": "oc-kitchen-instacart",
   "version": "0.1.0",
-  "description": "Wegmans grocery ordering automation for OC Kitchen",
+  "description": "Instacart grocery ordering automation for OC Kitchen",
   "type": "module",
   "main": "dist/index.js",
   "files": [

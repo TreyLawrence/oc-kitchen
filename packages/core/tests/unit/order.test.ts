@@ -32,12 +32,12 @@ describe("OrderRepository", () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const order = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     expect(order.id).toBeTruthy();
     expect(order.status).toBe("pending");
-    expect(order.store).toBe("wegmans");
+    expect(order.store).toBe("instacart");
     expect(order.groceryListId).toBe(list.id);
   });
 
@@ -45,7 +45,7 @@ describe("OrderRepository", () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const created = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     const order = await orderRepo.getById(created.id);
@@ -60,7 +60,7 @@ describe("OrderRepository", () => {
 
   it("lists orders by grocery list", async () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
-    await orderRepo.create({ groceryListId: list.id, store: "wegmans" });
+    await orderRepo.create({ groceryListId: list.id, store: "instacart" });
     await orderRepo.create({ groceryListId: list.id, store: "weee" });
 
     const orders = await orderRepo.getByGroceryListId(list.id);
@@ -69,22 +69,22 @@ describe("OrderRepository", () => {
 
   it("finds order by grocery list and store", async () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
-    await orderRepo.create({ groceryListId: list.id, store: "wegmans" });
+    await orderRepo.create({ groceryListId: list.id, store: "instacart" });
     await orderRepo.create({ groceryListId: list.id, store: "weee" });
 
     const order = await orderRepo.getByGroceryListAndStore(
       list.id,
-      "wegmans",
+      "instacart",
     );
     expect(order).not.toBeNull();
-    expect(order!.store).toBe("wegmans");
+    expect(order!.store).toBe("instacart");
   });
 
   it("updates order status and total", async () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const created = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     await orderRepo.update(created.id, {
@@ -99,7 +99,7 @@ describe("OrderRepository", () => {
 
   it("lists all orders in reverse chronological order", async () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
-    await orderRepo.create({ groceryListId: list.id, store: "wegmans" });
+    await orderRepo.create({ groceryListId: list.id, store: "instacart" });
     await orderRepo.create({ groceryListId: list.id, store: "weee" });
 
     const orders = await orderRepo.list();
@@ -125,15 +125,15 @@ describe("start_order tool", () => {
     const list = await groceryRepo.create({
       name: "Week Groceries",
       items: [
-        { name: "chicken thighs", quantity: 4, unit: "lbs", store: "wegmans" },
-        { name: "onions", quantity: 3, unit: "count", store: "wegmans" },
+        { name: "chicken thighs", quantity: 4, unit: "lbs", store: "instacart" },
+        { name: "onions", quantity: 3, unit: "count", store: "instacart" },
       ],
     });
     await groceryRepo.update(list.id, { status: "finalized" });
 
     const { respond, getResult } = mockRespond();
     await tool.handler(
-      { groceryListId: list.id, store: "wegmans" },
+      { groceryListId: list.id, store: "instacart" },
       { respond },
     );
 
@@ -149,7 +149,7 @@ describe("start_order tool", () => {
 
     const { respond, getResult } = mockRespond();
     await tool.handler(
-      { groceryListId: list.id, store: "wegmans" },
+      { groceryListId: list.id, store: "instacart" },
       { respond },
     );
 
@@ -161,20 +161,20 @@ describe("start_order tool", () => {
   it("rejects duplicate order for same store", async () => {
     const list = await groceryRepo.create({
       name: "Test",
-      items: [{ name: "milk", quantity: 1, unit: "gallon", store: "wegmans" }],
+      items: [{ name: "milk", quantity: 1, unit: "gallon", store: "instacart" }],
     });
     await groceryRepo.update(list.id, { status: "finalized" });
 
     const { respond: r1, getResult: g1 } = mockRespond();
     await tool.handler(
-      { groceryListId: list.id, store: "wegmans" },
+      { groceryListId: list.id, store: "instacart" },
       { respond: r1 },
     );
     expect(g1().success).toBe(true);
 
     const { respond: r2, getResult: g2 } = mockRespond();
     await tool.handler(
-      { groceryListId: list.id, store: "wegmans" },
+      { groceryListId: list.id, store: "instacart" },
       { respond: r2 },
     );
     expect(g2().success).toBe(false);
@@ -190,7 +190,7 @@ describe("start_order tool", () => {
 
     const { respond, getResult } = mockRespond();
     await tool.handler(
-      { groceryListId: list.id, store: "wegmans" },
+      { groceryListId: list.id, store: "instacart" },
       { respond },
     );
 
@@ -223,13 +223,13 @@ describe("start_order tool", () => {
   it("updates list status to ordering", async () => {
     const list = await groceryRepo.create({
       name: "Test",
-      items: [{ name: "milk", quantity: 1, unit: "gallon", store: "wegmans" }],
+      items: [{ name: "milk", quantity: 1, unit: "gallon", store: "instacart" }],
     });
     await groceryRepo.update(list.id, { status: "finalized" });
 
     const { respond } = mockRespond();
     await tool.handler(
-      { groceryListId: list.id, store: "wegmans" },
+      { groceryListId: list.id, store: "instacart" },
       { respond },
     );
 
@@ -256,7 +256,7 @@ describe("update_order tool", () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const order = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     const { respond, getResult } = mockRespond();
@@ -275,7 +275,7 @@ describe("update_order tool", () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const order = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     const { respond, getResult } = mockRespond();
@@ -289,7 +289,7 @@ describe("update_order tool", () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const order = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     const { respond, getResult } = mockRespond();
@@ -330,7 +330,7 @@ describe("get_order tool", () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
     const order = await orderRepo.create({
       groceryListId: list.id,
-      store: "wegmans",
+      store: "instacart",
     });
 
     const { respond, getResult } = mockRespond();
@@ -343,7 +343,7 @@ describe("get_order tool", () => {
 
   it("lists orders by grocery list", async () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
-    await orderRepo.create({ groceryListId: list.id, store: "wegmans" });
+    await orderRepo.create({ groceryListId: list.id, store: "instacart" });
     await orderRepo.create({ groceryListId: list.id, store: "weee" });
 
     const { respond, getResult } = mockRespond();
@@ -356,7 +356,7 @@ describe("get_order tool", () => {
 
   it("lists all orders when no filter", async () => {
     const list = await groceryRepo.create({ name: "Test", items: [] });
-    await orderRepo.create({ groceryListId: list.id, store: "wegmans" });
+    await orderRepo.create({ groceryListId: list.id, store: "instacart" });
 
     const { respond, getResult } = mockRespond();
     await tool.handler({}, { respond });

@@ -211,7 +211,7 @@ export class GroceryGenerationService {
       if (storeBreakdown[store] && storeBreakdown[store].itemCount < 4) {
         const storeName = store === "weee" ? "Weee!" : store;
         warnings.push(
-          `${storeName} order has only ${storeBreakdown[store].itemCount} items — may be below their $${minimum} minimum. Consider adding staples or moving items to Wegmans.`
+          `${storeName} order has only ${storeBreakdown[store].itemCount} items — may be below their $${minimum} minimum. Consider adding staples or moving items to Instacart.`
         );
       }
     }
@@ -239,7 +239,7 @@ export class GroceryGenerationService {
       return "weee";
     }
 
-    // Default to Wegmans
-    return "wegmans";
+    // Default to Instacart
+    return "instacart";
   }
 }
