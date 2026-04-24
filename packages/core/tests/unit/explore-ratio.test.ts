@@ -33,6 +33,7 @@ describe("ExploreRatioService", () => {
 
   async function logFirstCook(title: string, verdict: string) {
     const recipe = await createRecipe(title);
+    await cookLogRepo.logCook({ recipeId: recipe.id });
     await cookLogRepo.logCook({ recipeId: recipe.id, verdict: verdict as any });
     return recipe;
   }
@@ -144,7 +145,12 @@ describe("ExploreRatioService", () => {
       const r2 = await createRecipe("Recipe B");
       const r3 = await createRecipe("Recipe C");
 
-      // First cooks — all bangers (explore)
+      // First cooks — verdict-free cook required before verdict
+      await cookLogRepo.logCook({ recipeId: r1.id });
+      await cookLogRepo.logCook({ recipeId: r2.id });
+      await cookLogRepo.logCook({ recipeId: r3.id });
+
+      // First verdict cooks — all bangers (explore)
       await cookLogRepo.logCook({ recipeId: r1.id, verdict: "banger" });
       await cookLogRepo.logCook({ recipeId: r2.id, verdict: "banger" });
       await cookLogRepo.logCook({ recipeId: r3.id, verdict: "banger" });

@@ -24,6 +24,7 @@ describe("search_recipes tool", () => {
       source: "manual",
       instructions: "Cook it",
     });
+    await cookLogRepo.logCook({ recipeId: good.id });
     await cookLogRepo.logCook({ recipeId: good.id, verdict: "banger" });
 
     const bad = await recipeRepo.create({
@@ -31,6 +32,7 @@ describe("search_recipes tool", () => {
       source: "manual",
       instructions: "Don't cook it",
     });
+    await cookLogRepo.logCook({ recipeId: bad.id });
     await cookLogRepo.logCook({ recipeId: bad.id, verdict: "dont_make_again" });
 
     const respond = vi.fn();

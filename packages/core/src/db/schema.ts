@@ -41,7 +41,7 @@ export const cookLog = sqliteTable("cook_log", {
   recipeId: text("recipe_id")
     .notNull()
     .references(() => recipes.id, { onDelete: "cascade" }),
-  verdict: text("verdict").notNull(), // "banger" | "make_again" | "try_again_with_tweaks" | "dont_make_again"
+  verdict: text("verdict"), // "banger" | "make_again" | "try_again_with_tweaks" | "dont_make_again" (null for first cook)
   notes: text("notes"),
   modifications: text("modifications"), // JSON array of { original, modification }
   photos: text("photos"), // JSON array of file paths/URLs

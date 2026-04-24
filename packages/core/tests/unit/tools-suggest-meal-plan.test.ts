@@ -70,16 +70,19 @@ describe("suggest_meal_plan tool", () => {
     const banger = await recipeRepo.create({
       title: "Gochujang Chicken", source: "manual", instructions: "Cook it",
     });
+    await cookLogRepo.logCook({ recipeId: banger.id });
     await cookLogRepo.logCook({ recipeId: banger.id, verdict: "banger" });
 
     const makeAgain = await recipeRepo.create({
       title: "Mapo Tofu", source: "imported", instructions: "Fry it",
     });
+    await cookLogRepo.logCook({ recipeId: makeAgain.id });
     await cookLogRepo.logCook({ recipeId: makeAgain.id, verdict: "make_again" });
 
     const tweak = await recipeRepo.create({
       title: "Pad Thai", source: "manual", instructions: "Stir fry",
     });
+    await cookLogRepo.logCook({ recipeId: tweak.id });
     await cookLogRepo.logCook({ recipeId: tweak.id, verdict: "try_again_with_tweaks" });
 
     const uncooked = await recipeRepo.create({
@@ -146,6 +149,7 @@ describe("suggest_meal_plan tool", () => {
       servings: 2,
       tags: ["quick", "asian"],
     });
+    await cookLogRepo.logCook({ recipeId: recipe.id });
     await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "banger" });
 
     const respond = vi.fn();
@@ -164,6 +168,7 @@ describe("suggest_meal_plan tool", () => {
       source: "manual",
       instructions: "Mix flour, water, yeast. Let the dough rise overnight in the fridge. Shape and bake the next day.",
     });
+    await cookLogRepo.logCook({ recipeId: recipe.id });
     await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "banger" });
 
     const respond = vi.fn();
@@ -183,6 +188,7 @@ describe("suggest_meal_plan tool", () => {
       source: "manual",
       instructions: "Heat oil. Add garlic. Cook chicken 5 minutes. Add vegetables. Serve.",
     });
+    await cookLogRepo.logCook({ recipeId: recipe.id });
     await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "banger" });
 
     const respond = vi.fn();

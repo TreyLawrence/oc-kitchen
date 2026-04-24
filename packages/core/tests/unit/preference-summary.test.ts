@@ -37,6 +37,9 @@ describe("PreferenceSummaryService", () => {
     it("triggers on every 5th cook log", async () => {
       const recipe = await createRecipe("Test Recipe");
 
+      // Log initial cook without verdict (required before any verdict)
+      await cookLogRepo.logCook({ recipeId: recipe.id });
+
       // Log 4 cooks — no trigger on 4th
       for (let i = 0; i < 4; i++) {
         await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "make_again" });
@@ -54,6 +57,7 @@ describe("PreferenceSummaryService", () => {
     it("triggers on 10th cook log too", async () => {
       const recipe = await createRecipe("Test Recipe");
 
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       for (let i = 0; i < 10; i++) {
         await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "make_again" });
       }
@@ -65,6 +69,7 @@ describe("PreferenceSummaryService", () => {
     // Spec: "After a 'don't make again' verdict"
     it("triggers on dont_make_again verdict", async () => {
       const recipe = await createRecipe("Bad Recipe");
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "dont_make_again" });
 
       const result = await service.checkTrigger("dont_make_again", []);
@@ -75,6 +80,7 @@ describe("PreferenceSummaryService", () => {
     // Spec: "After the first 'banger' verdict for a new cuisine"
     it("triggers on first banger for a new cuisine tag", async () => {
       const korean = await createRecipe("Bibimbap", ["korean"]);
+      await cookLogRepo.logCook({ recipeId: korean.id });
       await cookLogRepo.logCook({ recipeId: korean.id, verdict: "banger" });
 
       const result = await service.checkTrigger("banger", ["korean"]);
@@ -85,7 +91,9 @@ describe("PreferenceSummaryService", () => {
     it("does not trigger on second banger for same cuisine", async () => {
       const r1 = await createRecipe("Bibimbap", ["korean"]);
       const r2 = await createRecipe("Bulgogi", ["korean"]);
+      await cookLogRepo.logCook({ recipeId: r1.id });
       await cookLogRepo.logCook({ recipeId: r1.id, verdict: "banger" });
+      await cookLogRepo.logCook({ recipeId: r2.id });
       await cookLogRepo.logCook({ recipeId: r2.id, verdict: "banger" });
 
       // 2 total cooks, not a multiple of 5, not dont_make_again,
@@ -96,9 +104,11 @@ describe("PreferenceSummaryService", () => {
 
     it("triggers when a recipe has a new cuisine tag even if others overlap", async () => {
       const r1 = await createRecipe("Bibimbap", ["korean"]);
+      await cookLogRepo.logCook({ recipeId: r1.id });
       await cookLogRepo.logCook({ recipeId: r1.id, verdict: "banger" });
 
       const r2 = await createRecipe("Korean-Mexican Tacos", ["korean", "mexican"]);
+      await cookLogRepo.logCook({ recipeId: r2.id });
       await cookLogRepo.logCook({ recipeId: r2.id, verdict: "banger" });
 
       // "mexican" is new even though "korean" already has a banger
@@ -108,6 +118,7 @@ describe("PreferenceSummaryService", () => {
 
     it("does not trigger for make_again on non-milestone count", async () => {
       const recipe = await createRecipe("OK Recipe");
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "make_again" });
 
       const result = await service.checkTrigger("make_again", []);
@@ -119,6 +130,7 @@ describe("PreferenceSummaryService", () => {
     // Spec: "Before generating a weekly meal plan (ensure it's fresh)"
     it("triggers when no summary exists and there are cook logs", async () => {
       const recipe = await createRecipe("Test Recipe");
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "banger" });
 
       const result = await service.checkStaleness();
@@ -134,6 +146,7 @@ describe("PreferenceSummaryService", () => {
     it("triggers when summary exists but cook logs are present (refresh)", async () => {
       await profileRepo.setPreference("preference_summary", "Loves Korean food");
       const recipe = await createRecipe("Test Recipe");
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "make_again" });
 
       const result = await service.checkStaleness();
@@ -145,6 +158,7 @@ describe("PreferenceSummaryService", () => {
   describe("gatherContext", () => {
     it("returns recent logs with recipe details", async () => {
       const recipe = await createRecipe("Gochujang Chicken", ["korean", "weeknight"]);
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       await cookLogRepo.logCook({
         recipeId: recipe.id,
         verdict: "banger",
@@ -166,8 +180,11 @@ describe("PreferenceSummaryService", () => {
       const r2 = await createRecipe("Recipe B", ["italian"]);
       const r3 = await createRecipe("Recipe C", ["mexican"]);
 
+      await cookLogRepo.logCook({ recipeId: r1.id });
       await cookLogRepo.logCook({ recipeId: r1.id, verdict: "banger" });
+      await cookLogRepo.logCook({ recipeId: r2.id });
       await cookLogRepo.logCook({ recipeId: r2.id, verdict: "make_again" });
+      await cookLogRepo.logCook({ recipeId: r3.id });
       await cookLogRepo.logCook({ recipeId: r3.id, verdict: "banger" });
 
       const context = await service.gatherContext();
@@ -194,6 +211,7 @@ describe("PreferenceSummaryService", () => {
 
     it("handles recipes with no tags gracefully", async () => {
       const recipe = await createRecipe("Plain Recipe");
+      await cookLogRepo.logCook({ recipeId: recipe.id });
       await cookLogRepo.logCook({ recipeId: recipe.id, verdict: "make_again" });
 
       const context = await service.gatherContext();
