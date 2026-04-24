@@ -29,7 +29,10 @@ describe("RecipeRepository", () => {
           { name: "pork shoulder", quantity: 8, unit: "lbs", category: "protein" },
           { name: "yellow mustard", quantity: 0.5, unit: "cup", category: "pantry" },
         ],
-        tags: ["bbq", "big green egg"],
+        tags: [
+          { tag: "bbq", type: "user" },
+          { tag: "big green egg", type: "equipment" },
+        ],
       });
 
       expect(recipe.id).toBeTruthy();
@@ -92,20 +95,30 @@ describe("RecipeRepository", () => {
         title: "Korean Fried Chicken",
         source: "imported",
         instructions: "Double fry",
-        tags: ["korean", "weeknight"],
+        tags: [
+          { tag: "korean", type: "cuisine" },
+          { tag: "weeknight", type: "duration" },
+        ],
         ingredients: [{ name: "chicken wings", quantity: 2, unit: "lbs", category: "protein" }],
       });
       await repo.create({
         title: "Smoked Brisket",
         source: "manual",
         instructions: "12 hours on the BGE",
-        tags: ["bbq", "big green egg", "project"],
+        tags: [
+          { tag: "bbq", type: "user" },
+          { tag: "big green egg", type: "equipment" },
+          { tag: "project", type: "duration" },
+        ],
       });
       await repo.create({
         title: "Quick Stir Fry",
         source: "ai_generated",
         instructions: "Wok it up",
-        tags: ["weeknight", "quick"],
+        tags: [
+          { tag: "weeknight", type: "duration" },
+          { tag: "quick", type: "duration" },
+        ],
       });
     });
 
@@ -122,7 +135,7 @@ describe("RecipeRepository", () => {
       expect(results.recipes[0].title).toBe("Smoked Brisket");
     });
 
-    it("filters by tag", async () => {
+    it("filters by tag name", async () => {
       const results = await repo.search({ tags: ["weeknight"] });
       expect(results.recipes).toHaveLength(2);
     });
@@ -205,19 +218,26 @@ describe("RecipeRepository", () => {
       expect(updated!.instructions).toBe("Do stuff"); // unchanged
     });
 
-    // Spec: Behavior Rule 5 — tags stored as JSON array
+    // Spec: Behavior Rule 5 — tags stored as JSON array of typed objects
     it("updates tags", async () => {
       const created = await repo.create({
         title: "Test",
         source: "manual",
         instructions: "Test",
-        tags: ["old"],
+        tags: [{ tag: "old", type: "user" }],
       });
 
-      await repo.update(created.id, { tags: ["new", "tags"] });
+      await repo.update(created.id, {
+        tags: [
+          { tag: "new", type: "user" },
+          { tag: "quick", type: "duration" },
+        ],
+      });
 
       const updated = await repo.getById(created.id);
-      expect(JSON.parse(updated!.tags!)).toEqual(["new", "tags"]);
+      const tags = JSON.parse(updated!.tags!);
+      expect(tags).toContainEqual({ tag: "new", type: "user" });
+      expect(tags).toContainEqual({ tag: "quick", type: "duration" });
     });
   });
 

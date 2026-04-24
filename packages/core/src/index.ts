@@ -41,6 +41,7 @@ import { createUpdateOrderTool } from "./tools/order-update.js";
 import { createGetOrderTool } from "./tools/order-get.js";
 import { InventorySyncService } from "./services/inventory-sync.service.js";
 import { createSyncDeliveryToInventoryTool } from "./tools/inventory-sync.js";
+import { createAutoTagRecipeTool } from "./tools/auto-tag-recipe.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -76,7 +77,7 @@ const plugin = {
 
     api.registerTool(createGetRecipeTool(recipeRepo, cookLogRepo));
     api.registerTool(createSearchRecipesTool(recipeRepo));
-    api.registerTool(createUpdateRecipeTool(recipeRepo));
+    api.registerTool(createUpdateRecipeTool(recipeRepo, autoTagger));
     api.registerTool(createDeleteRecipeTool(recipeRepo));
     api.registerTool(createLogCookTool(cookLogRepo, recipeRepo, preferenceSummary));
 
@@ -86,6 +87,7 @@ const plugin = {
     api.registerTool(createDiscoverRecipesTool(userProfileRepo));
     api.registerTool(createGenerateRecipeTool(userProfileRepo));
     api.registerTool(createSaveGeneratedRecipeTool(recipeRepo, autoTagger));
+    api.registerTool(createAutoTagRecipeTool(recipeRepo, userProfileRepo, autoTagger));
 
     // Inventory tools
     api.registerTool(createListInventoryTool(inventoryRepo));

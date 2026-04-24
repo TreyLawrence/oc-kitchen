@@ -3,6 +3,11 @@ import { recipes, recipeIngredients } from "../db/schema.js";
 import { newId } from "../utils/ids.js";
 import { now } from "../utils/dates.js";
 
+interface TypedTag {
+  tag: string;
+  type: string;
+}
+
 interface CreateRecipeInput {
   title: string;
   source: "manual" | "imported" | "ai_generated";
@@ -12,7 +17,7 @@ interface CreateRecipeInput {
   servings?: number;
   prepMinutes?: number;
   cookMinutes?: number;
-  tags?: string[];
+  tags?: TypedTag[] | string[];
   notes?: string;
   imageUrl?: string;
   ingredients?: Array<{
@@ -136,7 +141,8 @@ export class RecipeRepository {
 
     if (input.tags?.length) {
       for (const tag of input.tags) {
-        conditions.push(sql`${recipes.tags} LIKE ${`%"${tag}"%`}`);
+        // Match typed tag objects: {"tag":"<value>" — exact match on the tag field
+        conditions.push(sql`${recipes.tags} LIKE ${`%"tag":"${tag}"%`}`);
       }
     }
 
@@ -174,7 +180,7 @@ export class RecipeRepository {
     instructions: string;
     verdict: string;
     isFavorite: boolean;
-    tags: string[];
+    tags: TypedTag[] | string[];
     notes: string;
     imageUrl: string;
   }>) {
