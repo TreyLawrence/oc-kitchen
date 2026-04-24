@@ -11,6 +11,7 @@ export const recipes = sqliteTable("recipes", {
   servings: integer("servings"),
   prepMinutes: integer("prep_minutes"),
   cookMinutes: integer("cook_minutes"),
+  passiveMinutes: integer("passive_minutes"), // Hands-off time within cook (braising, smoking, rising)
   instructions: text("instructions").notNull(), // Markdown
   verdict: text("verdict"), // Derived from most recent cook log: "banger" | "make_again" | "try_again_with_tweaks" | "dont_make_again"
   isFavorite: integer("is_favorite", { mode: "boolean" }).default(false),

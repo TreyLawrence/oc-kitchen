@@ -18,7 +18,8 @@ The core entity. Stores recipe metadata, instructions, and user feedback.
 | source_url | text | URL if source is `"imported"` |
 | servings | integer | |
 | prep_minutes | integer | |
-| cook_minutes | integer | |
+| cook_minutes | integer | Total cook time including passive periods |
+| passive_minutes | integer | Hands-off time within cook (braising, smoking, rising). Calendar blocks cover active time only; description notes the hands-off window. |
 | instructions | text NOT NULL | Markdown formatted |
 | verdict | text | Derived from most recent cook log: `"banger"`, `"make_again"`, `"try_again_with_tweaks"`, `"dont_make_again"` |
 | is_favorite | boolean | default false |

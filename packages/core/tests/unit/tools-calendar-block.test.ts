@@ -273,6 +273,133 @@ describe("block_cooking_time tool", () => {
       expect(result.skipped[0].reason).toContain("no time estimate");
     });
 
+    it("blocks only active time for recipes with passiveMinutes", async () => {
+      // Braise: 30 min prep + 180 min cook, 150 min passive (simmering)
+      // Active time = 30 + 180 - 150 = 60 min
+      // Total elapsed = 30 + 180 = 210 min
+      // Start = 19:00 - 210 = 15:30
+      // Block end = 15:30 + 60 = 16:30 (not 19:00)
+      const recipe = await recipeRepo.create({
+        title: "Braised Short Ribs",
+        source: "manual",
+        instructions: "Sear, then braise for 2.5 hours",
+        prepMinutes: 30,
+        cookMinutes: 180,
+        passiveMinutes: 150,
+      });
+
+      const plan = await mealPlanRepo.create({
+        name: "Week of Apr 27",
+        weekStart: "2026-04-27",
+        weekEnd: "2026-05-03",
+        entries: [
+          { dayOfWeek: 5, mealType: "dinner", recipeId: recipe.id, category: "exploit" },
+        ],
+      });
+
+      const respond = vi.fn();
+      await tool.handler({ mealPlanId: plan.id, dinnerTargetTime: "19:00" }, { respond });
+
+      const result = respond.mock.calls[0][1];
+      expect(result.eventsCreated).toHaveLength(1);
+      expect(result.eventsCreated[0].start).toBe("15:30"); // same start
+      expect(result.eventsCreated[0].end).toBe("16:30");   // active time only
+    });
+
+    it("includes hands-off time range in description", async () => {
+      const recipe = await recipeRepo.create({
+        title: "BGE Smoked Brisket",
+        source: "manual",
+        instructions: "Smoke low and slow on the Big Green Egg",
+        prepMinutes: 30,
+        cookMinutes: 480,
+        passiveMinutes: 420,
+      });
+
+      const plan = await mealPlanRepo.create({
+        name: "Week of Apr 27",
+        weekStart: "2026-04-27",
+        weekEnd: "2026-05-03",
+        entries: [
+          { dayOfWeek: 6, mealType: "dinner", recipeId: recipe.id, category: "explore" },
+        ],
+      });
+
+      const respond = vi.fn();
+      await tool.handler({ mealPlanId: plan.id, dinnerTargetTime: "18:00" }, { respond });
+
+      const eventArg = (calendarService.createEvent as any).mock.calls[0][1];
+      expect(eventArg.description).toContain("Hands-off from");
+      expect(eventArg.description).toContain("Dinner ready by");
+      expect(eventArg.description).not.toContain("may include hands-off periods");
+    });
+
+    it("does not add hands-off note for recipes without passiveMinutes", async () => {
+      const recipe = await recipeRepo.create({
+        title: "Quick Stir Fry",
+        source: "manual",
+        instructions: "Stir fry everything",
+        prepMinutes: 15,
+        cookMinutes: 10,
+      });
+
+      const plan = await mealPlanRepo.create({
+        name: "Week of Apr 27",
+        weekStart: "2026-04-27",
+        weekEnd: "2026-05-03",
+        entries: [
+          { dayOfWeek: 0, mealType: "dinner", recipeId: recipe.id, category: "exploit" },
+        ],
+      });
+
+      const respond = vi.fn();
+      await tool.handler({ mealPlanId: plan.id }, { respond });
+
+      const eventArg = (calendarService.createEvent as any).mock.calls[0][1];
+      expect(eventArg.description).not.toContain("Hands-off");
+      // Block covers full time (ends at dinner target)
+      const result = respond.mock.calls[0][1];
+      expect(result.eventsCreated[0].end).toBe("19:30");
+    });
+
+    it("calculates correct hands-off window times for evening braise", async () => {
+      // 20 min prep + 120 min cook, 90 min passive
+      // Dinner at 19:30
+      // Start = 19:30 - 140 = 17:10
+      // Active = 20 + 120 - 90 = 50 min
+      // Block: 17:10 – 18:00
+      // Hands-off start = 17:10 + (20 + (120 - 90)) = 17:10 + 50 = 18:00
+      // Hands-off end = 17:10 + (20 + 120) = 17:10 + 140 = 19:30
+      const recipe = await recipeRepo.create({
+        title: "Red Wine Pot Roast",
+        source: "manual",
+        instructions: "Sear, deglaze, then braise covered for 90 min",
+        prepMinutes: 20,
+        cookMinutes: 120,
+        passiveMinutes: 90,
+      });
+
+      const plan = await mealPlanRepo.create({
+        name: "Week of Apr 27",
+        weekStart: "2026-04-27",
+        weekEnd: "2026-05-03",
+        entries: [
+          { dayOfWeek: 0, mealType: "dinner", recipeId: recipe.id, category: "exploit" },
+        ],
+      });
+
+      const respond = vi.fn();
+      await tool.handler({ mealPlanId: plan.id }, { respond });
+
+      const result = respond.mock.calls[0][1];
+      expect(result.eventsCreated[0].start).toBe("17:10");
+      expect(result.eventsCreated[0].end).toBe("18:00");
+
+      const eventArg = (calendarService.createEvent as any).mock.calls[0][1];
+      expect(eventArg.description).toContain("Hands-off from 6:00pm–7:30pm");
+      expect(eventArg.description).toContain("Dinner ready by 7:30pm");
+    });
+
     it("uses dinner_target_time from preferences when not passed", async () => {
       await profileRepo.setPreference("dinner_target_time", "20:00");
 
