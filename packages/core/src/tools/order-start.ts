@@ -6,7 +6,7 @@ const STORE_MINIMUMS: Record<string, number> = {
   weee: 35,
 };
 
-const VALID_STORES = ["wegmans", "weee", "butcherbox"];
+const VALID_STORES = ["instacart", "weee", "butcherbox"];
 
 export function createStartOrderTool(
   orderRepo: OrderRepository,

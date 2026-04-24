@@ -13,7 +13,7 @@
 OpenClaw plugin ecosystem — **not a website**. The monorepo has:
 
 - `packages/core/` — main plugin: schema, repositories, services, tools, skills
-- `packages/store-wegmans/`, `store-weee/`, `store-butcherbox/` — store ordering plugins (computer-use)
+- `packages/store-instacart/`, `store-weee/`, `store-butcherbox/` — store ordering plugins (computer-use)
 - Each plugin has `openclaw.plugin.json`, `src/`, and `skills/` directories
 
 **Stack:** SQLite via Drizzle ORM, better-sqlite3. Tests use in-memory DB via `createTestDb()`.
@@ -35,7 +35,7 @@ Multiple Claude Code sessions work on this repo simultaneously using shared task
 **Start a session:** `CLAUDE_CODE_TASK_LIST_ID=oc-kitchen claude --worktree <task-name>`
 
 - **Claim before starting.** Check the shared task list. Claim your task before working on it.
-- **One package per agent.** Stay in your package (`packages/core`, `packages/store-wegmans`, etc.). Don't edit files another agent owns.
+- **One package per agent.** Stay in your package (`packages/core`, `packages/store-instacart`, etc.). Don't edit files another agent owns.
 - **Shared files need coordination.** Root `package.json`, `CLAUDE.md`, `specs/shared/data-model.md` — ask the user before editing.
 - **Push and PR when done.** Each worktree produces a branch. Push it, open a PR. Keep PRs under 500 lines and independent from other agents' branches.
 - **Tests must pass.** Run `npm test` in your worktree before marking a task complete.
@@ -46,5 +46,5 @@ Multiple Claude Code sessions work on this repo simultaneously using shared task
 - All timestamps are ISO 8601 strings
 - Tags stored as JSON arrays in text columns
 - Verdict system: `banger`, `make_again`, `try_again_with_tweaks`, `dont_make_again` — no numeric stars
-- Store assignment: proteins → ButcherBox (if subscribed), Asian specialties → Weee!, everything else → Wegmans
+- Store assignment: proteins → ButcherBox (if subscribed), Asian specialties → Weee!, everything else → Instacart (default retailer: Wegmans)
 - Recipes auto-tagged on create/import: duration tags (quick/weeknight/project) + equipment tags matched against user profile

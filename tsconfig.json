@@ -5,7 +5,7 @@
   },
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/store-wegmans" },
+    { "path": "packages/store-instacart" },
     { "path": "packages/store-weee" },
     { "path": "packages/store-butcherbox" }
   ],

@@ -24,7 +24,7 @@ describe("GroceryRepository", () => {
     const list = await groceryRepo.create({
       name: "Week of Apr 27",
       items: [
-        { name: "chicken thighs", quantity: 4, unit: "lbs", category: "protein", store: "wegmans" },
+        { name: "chicken thighs", quantity: 4, unit: "lbs", category: "protein", store: "instacart" },
         { name: "gochujang", quantity: 3, unit: "tbsp", category: "pantry", store: "weee" },
       ],
     });
@@ -37,8 +37,8 @@ describe("GroceryRepository", () => {
     const created = await groceryRepo.create({
       name: "Test List",
       items: [
-        { name: "onions", quantity: 3, unit: "count", store: "wegmans" },
-        { name: "soy sauce", quantity: 1, unit: "bottle", store: "wegmans" },
+        { name: "onions", quantity: 3, unit: "count", store: "instacart" },
+        { name: "soy sauce", quantity: 1, unit: "bottle", store: "instacart" },
       ],
     });
 
@@ -58,7 +58,7 @@ describe("GroceryRepository", () => {
   it("adds and removes items", async () => {
     const created = await groceryRepo.create({
       name: "Evolving List",
-      items: [{ name: "original item", quantity: 1, unit: "count", store: "wegmans" }],
+      items: [{ name: "original item", quantity: 1, unit: "count", store: "instacart" }],
     });
 
     const list = await groceryRepo.getById(created.id);
@@ -75,7 +75,7 @@ describe("GroceryRepository", () => {
   it("checks off items", async () => {
     const created = await groceryRepo.create({
       name: "Checklist",
-      items: [{ name: "milk", quantity: 1, unit: "gallon", store: "wegmans" }],
+      items: [{ name: "milk", quantity: 1, unit: "gallon", store: "instacart" }],
     });
 
     const list = await groceryRepo.getById(created.id);
@@ -320,10 +320,10 @@ describe("GroceryGenerationService", () => {
     const ribeye = result.list.items.find((i: any) => i.name === "ribeye");
     const asparagus = result.list.items.find((i: any) => i.name === "asparagus");
     expect(ribeye!.store).toBe("butcherbox");
-    expect(asparagus!.store).toBe("wegmans");
+    expect(asparagus!.store).toBe("instacart");
   });
 
-  it("assigns proteins to wegmans when no butcherbox subscription", async () => {
+  it("assigns proteins to instacart when no butcherbox subscription", async () => {
     const r1 = await recipeRepo.create({
       title: "Chicken Dinner",
       source: "manual",
@@ -342,7 +342,7 @@ describe("GroceryGenerationService", () => {
 
     const result = await service.generateFromPlan(plan.id);
     const chicken = result.list.items.find((i: any) => i.name === "chicken thighs");
-    expect(chicken!.store).toBe("wegmans");
+    expect(chicken!.store).toBe("instacart");
   });
 
   it("only routes known proteins to butcherbox, not all protein category items", async () => {
@@ -368,7 +368,7 @@ describe("GroceryGenerationService", () => {
     const result = await service.generateFromPlan(plan.id);
     const shrimp = result.list.items.find((i: any) => i.name === "shrimp");
     const salmon = result.list.items.find((i: any) => i.name === "salmon");
-    expect(shrimp!.store).toBe("wegmans");
+    expect(shrimp!.store).toBe("instacart");
     expect(salmon!.store).toBe("butcherbox");
   });
 

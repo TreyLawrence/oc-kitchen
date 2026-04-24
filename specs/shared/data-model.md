@@ -126,7 +126,7 @@ Individual items on a grocery list.
 | quantity | real | |
 | unit | text | |
 | category | text | |
-| store | text | `"wegmans"`, `"weee"`, `"butcherbox"`, or null (unassigned) |
+| store | text | `"instacart"`, `"weee"`, `"butcherbox"`, or null (unassigned) |
 | is_checked | boolean | default false |
 | recipe_id | text FK | → recipes.id (tracks which recipe needs this) |
 | sort_order | integer | default 0 |
@@ -138,7 +138,7 @@ Tracks agent-submitted orders to external stores.
 |--------|------|-------|
 | id | text PK | nanoid |
 | grocery_list_id | text FK NOT NULL | → grocery_lists.id |
-| store | text NOT NULL | `"wegmans"`, `"weee"`, or `"butcherbox"` |
+| store | text NOT NULL | `"instacart"`, `"weee"`, or `"butcherbox"` |
 | status | text NOT NULL | `"pending"`, `"agent_running"`, `"submitted"`, `"failed"`, `"delivered"` — default `"pending"` |
 | agent_run_id | text | Correlates with agent process |
 | order_total | real | |
@@ -183,5 +183,5 @@ meal_plans ──< grocery_lists ──< grocery_orders
 
 1. **Single user, local-first** — each user runs their own OpenClaw gateway with their own SQLite database. No multi-user auth needed.
 2. **Soft references for grocery items** — `grocery_items.recipe_id` tracks provenance but doesn't cascade; deleting a recipe doesn't destroy grocery lists.
-3. **Store assignment** — `grocery_items.store` and `recipe_ingredients.category` enable smart routing (e.g., Asian specialty items → Weee!, general produce → Wegmans).
+3. **Store assignment** — `grocery_items.store` and `recipe_ingredients.category` enable smart routing (e.g., Asian specialty items → Weee!, general produce → Instacart/Wegmans).
 4. **Preference learning** — `user_preferences` stores a lightweight summary (cuisine affinities, common modifications). Raw cook log entries are also passed to Claude at generation time for nuance.

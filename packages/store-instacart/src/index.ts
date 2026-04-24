@@ -3,12 +3,12 @@ interface PluginApi {
 }
 
 const plugin = {
-  id: "oc-kitchen-wegmans",
-  name: "OC Kitchen — Wegmans",
-  description: "Automated grocery ordering from Wegmans via computer-use agent",
+  id: "oc-kitchen-instacart",
+  name: "OC Kitchen — Instacart",
+  description: "Automated grocery ordering from any Instacart-supported retailer via computer-use agent",
 
   register(api: PluginApi) {
-    // order_wegmans tool will be registered here
+    // order_instacart tool will be registered here
   },
 };
 

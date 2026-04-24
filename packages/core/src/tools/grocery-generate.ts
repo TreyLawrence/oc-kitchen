@@ -4,7 +4,7 @@ export function createGenerateGroceryListTool(service: GroceryGenerationService)
   return {
     name: "generate_grocery_list",
     description:
-      "Generate a grocery list from a finalized meal plan. Aggregates recipe ingredients, subtracts inventory, and assigns items to stores (ButcherBox for proteins, Weee! for Asian specialty, Wegmans for everything else).",
+      "Generate a grocery list from a finalized meal plan. Aggregates recipe ingredients, subtracts inventory, and assigns items to stores (ButcherBox for proteins, Weee! for Asian specialty, Instacart for everything else).",
     parameters: {
       type: "object",
       properties: {

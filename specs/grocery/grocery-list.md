@@ -2,13 +2,13 @@
 
 ## Overview
 
-Once a meal plan is finalized, OC Kitchen generates a grocery list by aggregating all recipe ingredients, subtracting what's already in inventory, and assigning items to stores (Wegmans vs Weee! vs other). The user reviews and tweaks the list before ordering.
+Once a meal plan is finalized, OC Kitchen generates a grocery list by aggregating all recipe ingredients, subtracting what's already in inventory, and assigning items to stores (Instacart vs Weee! vs ButcherBox). The user reviews and tweaks the list before ordering.
 
 ## User Stories
 
 - As a user, I can generate a grocery list from my weekly meal plan
 - As a user, items I already have in inventory are automatically excluded
-- As a user, items are grouped by store based on category (Asian specialties → Weee!, everything else → Wegmans)
+- As a user, items are grouped by store based on category (Asian specialties → Weee!, everything else → Instacart/Wegmans)
 - As a user, I can review the list, add/remove items, reassign stores, and check things off
 - As a user, I can create a grocery list without a meal plan (ad-hoc shopping)
 - As a user, once the list is finalized I can trigger ordering for each store
@@ -21,7 +21,7 @@ See `shared/data-model.md` → `grocery_lists`, `grocery_items`, `grocery_orders
 
 **Store assignment logic:**
 - Items with `category` matching Asian specialty patterns → `"weee"`
-- Everything else → `"wegmans"`
+- Everything else → `"instacart"` (routed to the user's default Instacart retailer, typically Wegmans)
 - User can override any assignment
 - Items with `store: null` are unassigned (manual purchase)
 
@@ -62,7 +62,7 @@ Generate a grocery list from a meal plan, subtracting inventory.
         "quantity": 4,
         "unit": "lbs",
         "category": "protein",
-        "store": "wegmans",
+        "store": "instacart",
         "recipeId": "abc123",
         "isChecked": false
       },
@@ -82,11 +82,11 @@ Generate a grocery list from a meal plan, subtracting inventory.
       { "name": "soy sauce", "had": "plenty", "needed": "3 tbsp", "result": "skipped" }
     ],
     "storeBreakdown": {
-      "wegmans": { "itemCount": 12 },
+      "instacart": { "itemCount": 12, "retailer": "wegmans" },
       "weee": { "itemCount": 4, "belowMinimum": true, "minimum": 35 }
     },
     "warnings": [
-      "Weee! order has only 4 items — may be below their $35 minimum. Consider adding staples or moving items to Wegmans."
+      "Weee! order has only 4 items — may be below their $35 minimum. Consider adding staples or moving items to Instacart."
     ]
   }
 }
@@ -136,11 +136,11 @@ Modify a grocery list — add/remove items, reassign stores, check items, change
   "id": "gl1",
   "status": "finalized",
   "addItems": [
-    { "name": "beer", "quantity": 1, "unit": "six-pack", "store": "wegmans" }
+    { "name": "beer", "quantity": 1, "unit": "six-pack", "store": "instacart" }
   ],
   "removeItems": ["gi3"],
   "updateItems": [
-    { "id": "gi2", "store": "wegmans" },
+    { "id": "gi2", "store": "instacart" },
     { "id": "gi1", "isChecked": true }
   ]
 }
@@ -151,13 +151,13 @@ Modify a grocery list — add/remove items, reassign stores, check items, change
 1. **Ingredient aggregation** — if two recipes both need "onion", combine into a single list item with summed quantity. Fuzzy match on name ("yellow onion" and "onion" are the same).
 2. **Inventory subtraction** — match inventory items against the ingredient list. If the inventory has enough, skip the item. If partial, reduce the quantity. Report what was subtracted so the user can verify.
 3. **Store assignment defaults:**
-   - **Proteins → ButcherBox first.** If the user has a ButcherBox subscription and the protein is something BB carries (chicken, beef, pork, salmon, etc.), assign it to ButcherBox. Check if the customization window for the next box is still open. If BB can't cover it (wrong timing, not available), fall back to Wegmans.
+   - **Proteins → ButcherBox first.** If the user has a ButcherBox subscription and the protein is something BB carries (chicken, beef, pork, salmon, etc.), assign it to ButcherBox. Check if the customization window for the next box is still open. If BB can't cover it (wrong timing, not available), fall back to Instacart.
    - **Asian specialty ingredients** (gochugaru, doubanjiang, mirin, nori, specific tofu varieties, bok choy, etc.) → Weee!
-   - **Everything else** → Wegmans (primary store)
-   - If Wegmans is likely to carry it (even if it's Asian-adjacent, like soy sauce or rice) → keep at Wegmans.
-   - When in doubt → Wegmans
+   - **Everything else** → Instacart (default retailer, typically Wegmans)
+   - If the default Instacart retailer is likely to carry it (even if it's Asian-adjacent, like soy sauce or rice) → keep at Instacart.
+   - When in doubt → Instacart
 4. **Minimum order thresholds.** Each store plugin declares a minimum order amount (e.g., Weee! = $35). If a store's assigned items fall below the minimum, the agent warns the user:
-   - "Your Weee! order is only $12 — their minimum is $35. Want to add more items, move these to Wegmans, or skip this order?"
+   - "Your Weee! order is only $12 — their minimum is $35. Want to add more items, move these to Instacart, or skip this order?"
    - The agent can suggest additional items to hit the minimum based on pantry staples or things the user buys regularly from that store.
 5. **User overrides** — any store assignment can be changed. The system should learn from overrides over time (future enhancement).
 6. **Pantry staples** — common items (salt, pepper, olive oil, butter, flour, sugar, etc.) are excluded from the grocery list by default. This prevents cluttering the list with things every kitchen has.
@@ -172,8 +172,8 @@ Modify a grocery list — add/remove items, reassign stores, check items, change
 ## The Conversation Flow
 
 1. **User finalizes meal plan** → agent offers: "Want me to generate a grocery list?"
-2. **Agent generates list** → presents it grouped by store: "Here's what we need — 12 items from Wegmans, 4 from Weee!"
-3. **User reviews** → "Add beer", "I actually have soy sauce", "Move the tofu to Wegmans"
+2. **Agent generates list** → presents it grouped by store: "Here's what we need — 12 items from Instacart (Wegmans), 4 from Weee!"
+3. **User reviews** → "Add beer", "I actually have soy sauce", "Move the tofu to Instacart"
 4. **Agent adjusts** → updates the list
 5. **User finalizes** → "Looks good"
 6. **Agent offers ordering** → "Want me to order from Wegmans? And Weee!?"

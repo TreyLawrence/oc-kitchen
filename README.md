@@ -12,7 +12,7 @@ An OpenClaw plugin ecosystem that manages your entire cooking lifecycle through 
 
 **Kitchen Inventory** — Track what's in your fridge, freezer, and pantry. Ingredients auto-deduct when you cook. Leftovers are tracked with portions. Expiring items get priority in meal plans. Before ordering, the agent verifies your inventory is accurate.
 
-**Grocery Ordering** — Generate a grocery list from your meal plan (minus what you already have), assign items to stores, and auto-order via computer-use agents. Proteins route to ButcherBox, Asian specialties to Weee!, everything else to Wegmans. Minimum order thresholds are enforced.
+**Grocery Ordering** — Generate a grocery list from your meal plan (minus what you already have), assign items to stores, and auto-order via computer-use agents. Proteins route to ButcherBox, Asian specialties to Weee!, everything else to Instacart (defaulting to Wegmans). Minimum order thresholds are enforced.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ An OpenClaw plugin ecosystem that manages your entire cooking lifecycle through 
 oc-kitchen/
 ├── packages/
 │   ├── core/                  # Main plugin: recipes, plans, inventory, grocery
-│   ├── store-wegmans/         # Wegmans ordering automation
+│   ├── store-instacart/        # Instacart ordering automation (any retailer)
 │   ├── store-weee/            # Weee! ordering automation
 │   └── store-butcherbox/      # ButcherBox subscription management
 ├── specs/                     # Feature specifications (source of truth)
@@ -31,7 +31,7 @@ This is an **OpenClaw plugin**, not a standalone app. Install it into your OpenC
 
 ```bash
 openclaw plugins install oc-kitchen
-openclaw plugins install oc-kitchen-wegmans
+openclaw plugins install oc-kitchen-instacart
 openclaw plugins install oc-kitchen-weee
 openclaw plugins install oc-kitchen-butcherbox
 ```
@@ -53,7 +53,7 @@ specs/*.md  →  tests/*.test.ts  →  implementation
 | [Recipe Management](specs/recipes/recipe-management.md) | CRUD, import (JSON-LD + LLM), discover (browse favorite sites), generate (AI), four-tier verdicts, cook logging with modifications and photos |
 | [Inventory Tracking](specs/inventory/inventory-tracking.md) | Kitchen contents, auto-deduction after cooking, leftover tracking (fridge + freezer), pre-order verification, expiration warnings |
 | [Meal Planning](specs/meal-planning/weekly-plan.md) | Calendar-aware scheduling, explore vs exploit optimization, leftover math, multi-day recipes, prep delegation to household helpers |
-| [Grocery Lists](specs/grocery/grocery-list.md) | Generation from meal plans, inventory subtraction, store assignment (ButcherBox → Weee! → Wegmans), minimum order enforcement |
+| [Grocery Lists](specs/grocery/grocery-list.md) | Generation from meal plans, inventory subtraction, store assignment (ButcherBox → Weee! → Instacart), minimum order enforcement |
 | [Ordering](specs/grocery/ordering.md) | Per-store computer-use automation, cart-only default, progress reporting, delivery follow-up |
 
 ### Key design decisions
@@ -63,7 +63,7 @@ specs/*.md  →  tests/*.test.ts  →  implementation
 - **Leftovers are first-class** — Tracked as inventory items with portions. A recipe that serves 4 for a household of 2 means tomorrow's lunch is covered.
 - **Time-aware cooking** — Calendar integration calculates available minutes per evening, not just free/busy. Recipes are matched to the time you actually have.
 - **Prep delegation** — Generate simple prep lists for household helpers. Chopping and measuring can be done by anyone; the agent subtracts prep time from the cook's required time.
-- **Store routing** — Proteins → ButcherBox (subscription), Asian specialty → Weee! ($35 minimum enforced), everything else → Wegmans. Pluggable — anyone can build new store plugins.
+- **Store routing** — Proteins → ButcherBox (subscription), Asian specialty → Weee! ($35 minimum enforced), everything else → Instacart (default retailer: Wegmans). Pluggable — anyone can build new store plugins.
 
 ## Tools (22 in core plugin)
 
@@ -76,7 +76,7 @@ specs/*.md  →  tests/*.test.ts  →  implementation
 | Inventory | `list_inventory`, `update_inventory`, `deduct_recipe_ingredients`, `verify_inventory` |
 | Meal Plans | `create_meal_plan`, `get_meal_plan`, `update_meal_plan`, `suggest_meal_plan`, `check_calendar`, `generate_prep_list` |
 
-Plus per-store: `order_wegmans`, `order_weee`, `order_butcherbox`
+Plus per-store: `order_instacart`, `order_weee`, `order_butcherbox`
 
 ## Skills (7 bundled)
 
@@ -86,7 +86,7 @@ Plus per-store: `order_wegmans`, `order_weee`, `order_butcherbox`
 | `recipe-discovery` | Find, import, generate new recipes from favorite sites |
 | `cook-logging` | 8-step post-cook flow: verdict → deduct → leftovers → preferences |
 | `meal-planning` | Calendar-aware weekly planning with explore/exploit |
-| `wegmans-ordering` | Grocery cart automation |
+| `instacart-ordering` | Grocery cart automation (any Instacart retailer) |
 | `weee-ordering` | Asian grocery cart automation |
 | `butcherbox-ordering` | Meat subscription box customization |
 

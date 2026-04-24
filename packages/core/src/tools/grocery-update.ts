@@ -18,7 +18,7 @@ export function createUpdateGroceryListTool(repo: GroceryRepository) {
               name: { type: "string" },
               quantity: { type: "number" },
               unit: { type: "string" },
-              store: { type: "string", enum: ["wegmans", "weee", "butcherbox"] },
+              store: { type: "string", enum: ["instacart", "weee", "butcherbox"] },
             },
             required: ["name"],
           },
