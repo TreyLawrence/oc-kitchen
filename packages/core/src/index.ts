@@ -42,6 +42,8 @@ import { createGetOrderTool } from "./tools/order-get.js";
 import { InventorySyncService } from "./services/inventory-sync.service.js";
 import { createSyncDeliveryToInventoryTool } from "./tools/inventory-sync.js";
 import { createAutoTagRecipeTool } from "./tools/auto-tag-recipe.js";
+import { ButcherBoxCutoffService } from "./services/butcherbox-cutoff.service.js";
+import { createCheckButcherboxCutoffTool } from "./tools/butcherbox-cutoff.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -116,6 +118,10 @@ const plugin = {
     api.registerTool(createStartOrderTool(orderRepo, groceryRepo));
     api.registerTool(createUpdateOrderTool(orderRepo));
     api.registerTool(createGetOrderTool(orderRepo));
+
+    // ButcherBox tools
+    const cutoffService = new ButcherBoxCutoffService(userProfileRepo, mealPlanRepo, recipeRepo);
+    api.registerTool(createCheckButcherboxCutoffTool(cutoffService));
   },
 };
 
