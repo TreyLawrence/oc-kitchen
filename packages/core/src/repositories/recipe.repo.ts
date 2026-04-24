@@ -1,5 +1,5 @@
-import { eq, like, and, desc, sql } from "drizzle-orm";
-import { recipes, recipeIngredients } from "../db/schema.js";
+import { eq, like, and, desc, sql, isNull } from "drizzle-orm";
+import { recipes, recipeIngredients, mealPlanEntries } from "../db/schema.js";
 import { newId } from "../utils/ids.js";
 import { now } from "../utils/dates.js";
 
@@ -203,6 +203,18 @@ export class RecipeRepository {
   async delete(id: string): Promise<boolean> {
     const existing = this.db.select().from(recipes).where(eq(recipes.id, id)).get();
     if (!existing) return false;
+
+    // Spec Rule 6: Preserve customTitle as fallback before nulling recipeId
+    this.db
+      .update(mealPlanEntries)
+      .set({ customTitle: existing.title })
+      .where(
+        and(
+          eq(mealPlanEntries.recipeId, id),
+          isNull(mealPlanEntries.customTitle),
+        ),
+      )
+      .run();
 
     this.db.delete(recipes).where(eq(recipes.id, id)).run();
     return true;

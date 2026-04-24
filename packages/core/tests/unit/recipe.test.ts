@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
 import { createTestDb } from "../../src/db/index.js";
 import { RecipeRepository } from "../../src/repositories/recipe.repo.js";
+import { mealPlans, mealPlanEntries } from "../../src/db/schema.js";
 
 // Spec: specs/recipes/recipe-management.md
 
@@ -255,6 +257,77 @@ describe("RecipeRepository", () => {
 
       const recipe = await repo.getById(created.id);
       expect(recipe).toBeNull();
+    });
+
+    // Spec: Behavior Rule 6 — sets recipeId to null, preserves customTitle as fallback
+    it("nulls recipeId on meal plan entries and sets customTitle as fallback", async () => {
+      const recipe = await repo.create({
+        title: "Smoked Ribs",
+        source: "manual",
+        instructions: "Smoke low and slow",
+        ingredients: [],
+      });
+
+      // Create a meal plan and entries referencing this recipe
+      const ts = new Date().toISOString();
+      db.insert(mealPlans)
+        .values({
+          id: "mp-1",
+          name: "Week 1",
+          weekStart: "2026-04-20",
+          weekEnd: "2026-04-26",
+          status: "active",
+          createdAt: ts,
+          updatedAt: ts,
+        })
+        .run();
+
+      // Entry without customTitle — should get recipe title as fallback
+      db.insert(mealPlanEntries)
+        .values({
+          id: "mpe-1",
+          mealPlanId: "mp-1",
+          recipeId: recipe.id,
+          dayOfWeek: 0,
+          mealType: "dinner",
+          sortOrder: 0,
+        })
+        .run();
+
+      // Entry with existing customTitle — should keep its customTitle
+      db.insert(mealPlanEntries)
+        .values({
+          id: "mpe-2",
+          mealPlanId: "mp-1",
+          recipeId: recipe.id,
+          dayOfWeek: 1,
+          mealType: "dinner",
+          customTitle: "Leftover Ribs",
+          sortOrder: 0,
+        })
+        .run();
+
+      await repo.delete(recipe.id);
+
+      const entry1 = db
+        .select()
+        .from(mealPlanEntries)
+        .where(eq(mealPlanEntries.id, "mpe-1"))
+        .get()!;
+      const entry2 = db
+        .select()
+        .from(mealPlanEntries)
+        .where(eq(mealPlanEntries.id, "mpe-2"))
+        .get()!;
+
+      // recipeId should be null (via ON DELETE set null)
+      expect(entry1.recipeId).toBeNull();
+      expect(entry2.recipeId).toBeNull();
+
+      // customTitle fallback: entry without customTitle gets recipe title
+      expect(entry1.customTitle).toBe("Smoked Ribs");
+      // entry with existing customTitle keeps it
+      expect(entry2.customTitle).toBe("Leftover Ribs");
     });
 
     it("returns false for nonexistent id", async () => {
