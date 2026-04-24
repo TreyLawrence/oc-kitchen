@@ -397,7 +397,13 @@ Generate a prep list for a household helper (nanny, partner, etc.). Supports two
    - **Don't make again:** Never.
 3. **Explore sources:** Pull new recipes from user's `favorite_sources` via `discover_recipes` and from AI generation via `generate_recipe`. Mix both.
 4. **Proactive exploration:** Periodically suggest a new cuisine the user hasn't tried, a new technique (smoking, fermenting, sous vide), or a challenging recipe to grow their skills. Ask, don't impose: "Want to try something Korean this week?" 
-5. **Ratio adapts:** If the user frequently rejects explore suggestions, reduce the ratio. If they rate explores as bangers, increase it.
+5. **Ratio adapts:** The `explore_ratio` automatically adjusts based on cook log feedback for "explore" recipes (first-time cooks). The `ExploreRatioService` runs after each `log_cook` call and:
+   - **Identifies explore cooks:** A cook log entry is an "explore cook" if it's the first time that recipe has been cooked (no prior cook log entries for that `recipeId`).
+   - **Requires minimum data:** At least 3 explore cooks must exist before any adaptation occurs.
+   - **Computes sentiment:** From recent explore cooks (last 10), count positive verdicts (`banger`, `make_again`) vs negative (`dont_make_again`). `try_again_with_tweaks` is neutral and excluded from the ratio.
+   - **Nudges the ratio:** If positive rate ≥ 0.7 → increase `explore_ratio` by 0.05. If positive rate ≤ 0.3 → decrease by 0.05. Otherwise no change.
+   - **Clamps to bounds:** `explore_ratio` stays within [0.10, 0.70].
+   - **Returns context:** When adapted, returns `{ adapted: true, oldRatio, newRatio, reason }` so the agent can inform the user (e.g., "Your new recipes have been landing well — I've bumped your explore ratio to 40%").
 
 ### Calendar & Time-Aware Cooking
 6. **Weekly check-in:** The agent should proactively message at the start of the week (Sunday evening or Monday morning): "How many nights are you cooking this week? Let me check your calendar."
