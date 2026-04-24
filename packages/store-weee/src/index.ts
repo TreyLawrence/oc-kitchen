@@ -1,3 +1,5 @@
+import { createOrderWeeeTool } from "./tools/order-weee.js";
+
 interface PluginApi {
   registerTool(tool: unknown): void;
 }
@@ -8,7 +10,7 @@ const plugin = {
   description: "Automated grocery ordering from Weee! via computer-use agent",
 
   register(api: PluginApi) {
-    // order_weee tool will be registered here
+    api.registerTool(createOrderWeeeTool());
   },
 };
 
