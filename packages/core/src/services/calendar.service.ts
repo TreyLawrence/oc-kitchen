@@ -74,4 +74,55 @@ export class CalendarService {
 
     return res.json();
   }
+
+  /**
+   * Update an existing event on Google Calendar.
+   */
+  async updateEvent(
+    token: string,
+    eventId: string,
+    event: CalendarEvent,
+    calendarId = "primary"
+  ): Promise<{ id: string }> {
+    const res = await fetch(
+      `${GCAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(event),
+      }
+    );
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Google Calendar API error (${res.status}): ${body}`);
+    }
+
+    return res.json();
+  }
+
+  /**
+   * Delete an event from Google Calendar.
+   */
+  async deleteEvent(
+    token: string,
+    eventId: string,
+    calendarId = "primary"
+  ): Promise<void> {
+    const res = await fetch(
+      `${GCAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Google Calendar API error (${res.status}): ${body}`);
+    }
+  }
 }

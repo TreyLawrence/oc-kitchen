@@ -256,6 +256,38 @@ Add cooking time blocks to Google Calendar for an approved meal plan. Called aut
 
 **Note:** Requires the same Google Calendar OAuth token used by `check_calendar`. If not connected, the agent tells the user the times but can't block them.
 
+### `sync_cooking_calendar`
+Sync calendar blocks to match the current state of a meal plan. Called by the agent after any `update_meal_plan` call that changes cooking nights (swap recipe, move meal, remove entry). Uses a delete-and-recreate strategy for reliability.
+
+**Parameters:**
+```json
+{
+  "mealPlanId": "plan1",
+  "dinnerTargetTime": "19:30"    // optional, same as block_cooking_time
+}
+```
+
+**Process:**
+1. List all events for the plan's week from Google Calendar
+2. Identify cooking blocks by "Cook: " or "Prep: " summary prefix
+3. Delete all matched events
+4. Rebuild and create events from the current plan entries (same logic as `block_cooking_time`)
+
+**Success:**
+```json
+{
+  "ok": true,
+  "calendarConnected": true,
+  "eventsDeleted": 3,
+  "eventsCreated": [
+    { "date": "2026-04-27", "title": "Cook: New Recipe (15p + 30c)", "start": "18:45", "end": "19:30" }
+  ],
+  "skipped": [...]
+}
+```
+
+**Without calendar connected:** Returns `{ ok: true, calendarConnected: false }` with the updated schedule for the agent to relay.
+
 ### `create_meal_plan`
 Save a plan to the database (usually after the user approves a suggestion).
 
@@ -411,7 +443,7 @@ Generate a prep list for a household helper (nanny, partner, etc.). Supports two
 8. **Time-constrained recipe selection:** Recipes are matched to available time. A night with 60 minutes gets a quick stir fry, not a braise. A free Saturday with 8 hours gets the brisket. The agent should say: "You have about 90 minutes Tuesday — I'm thinking the gochujang chicken (20 min prep + 40 min cook)."
 9. **User override:** The user can always override calendar suggestions: "Actually I can cook Thursday even though I have that meeting."
 10. **Calendar blocking:** When the user approves a plan and it goes active, the agent offers to block cooking time on their calendar via `block_cooking_time`. This prevents double-booking and shows the user exactly when to start cooking each night. Only cooking nights get blocks — leftover/takeout/skip nights are left open.
-11. **Calendar blocks update with plan changes.** If the user swaps a recipe or moves a meal to a different day, the agent updates the calendar blocks to match. Removing a cooking night deletes its block.
+11. **Calendar blocks update with plan changes.** If the user swaps a recipe or moves a meal to a different day, the agent updates the calendar blocks to match. Removing a cooking night deletes its block. The agent calls `sync_cooking_calendar` after any meal plan modification that affects cooking nights. The tool uses a delete-and-recreate strategy: it lists existing events for the plan's week, identifies cooking blocks by their "Cook: " or "Prep: " summary prefix, deletes them, and creates fresh blocks from the current plan state. This avoids complex diffing and guarantees the calendar always matches the plan.
 12. **Hands-off time is noted, not blocked.** For recipes with long passive time (braising, slow smoking), the calendar block covers active time only. The description notes "Hands-off from 6:30–8:00pm" so the user knows they're free during that stretch.
 
 ### Leftovers & Portions
