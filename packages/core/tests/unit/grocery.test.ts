@@ -6,6 +6,7 @@ import { InventoryRepository } from "../../src/repositories/inventory.repo.js";
 import { GroceryRepository } from "../../src/repositories/grocery.repo.js";
 import { UserProfileRepository } from "../../src/repositories/user-profile.repo.js";
 import { GroceryGenerationService } from "../../src/services/grocery-generation.service.js";
+import { createCreateGroceryListTool } from "../../src/tools/grocery-create.js";
 
 // Spec: specs/grocery/grocery-list.md
 
@@ -84,6 +85,87 @@ describe("GroceryRepository", () => {
 
     const updated = await groceryRepo.getById(created.id);
     expect(updated!.items[0].isChecked).toBe(true);
+  });
+});
+
+// Spec rule 6: "Ad-hoc lists — can be created without a meal plan"
+describe("create_grocery_list tool (ad-hoc)", () => {
+  let db: ReturnType<typeof createTestDb>["db"];
+  let groceryRepo: GroceryRepository;
+  let tool: ReturnType<typeof createCreateGroceryListTool>;
+
+  beforeEach(() => {
+    const testDb = createTestDb();
+    db = testDb.db;
+    groceryRepo = new GroceryRepository(db);
+    tool = createCreateGroceryListTool(groceryRepo);
+  });
+
+  function callTool(params: any): Promise<{ success: boolean; data: any }> {
+    return new Promise((resolve) => {
+      tool.handler(params, {
+        respond: (success: boolean, data: any) => resolve({ success, data }),
+      });
+    });
+  }
+
+  it("creates a list without a meal plan", async () => {
+    const { success, data } = await callTool({
+      name: "Party supplies",
+      items: [
+        { name: "chips", quantity: 2, unit: "bags" },
+        { name: "salsa", quantity: 1, unit: "jar" },
+      ],
+    });
+
+    expect(success).toBe(true);
+    expect(data.ok).toBe(true);
+    expect(data.list.name).toBe("Party supplies");
+    expect(data.list.status).toBe("draft");
+    expect(data.list.mealPlanId).toBeNull();
+    expect(data.list.items).toHaveLength(2);
+  });
+
+  it("creates a list with store assignments", async () => {
+    const { success, data } = await callTool({
+      name: "Asian grocery run",
+      items: [
+        { name: "gochugaru", quantity: 1, unit: "bag", store: "weee" },
+        { name: "milk", quantity: 1, unit: "gallon", store: "wegmans" },
+      ],
+    });
+
+    expect(success).toBe(true);
+    expect(data.list.items.find((i: any) => i.name === "gochugaru").store).toBe("weee");
+    expect(data.list.items.find((i: any) => i.name === "milk").store).toBe("wegmans");
+  });
+
+  it("creates a list with minimal item info (name only)", async () => {
+    const { success, data } = await callTool({
+      name: "Quick list",
+      items: [{ name: "eggs" }, { name: "butter" }],
+    });
+
+    expect(success).toBe(true);
+    expect(data.list.items).toHaveLength(2);
+    expect(data.list.items[0].quantity).toBeNull();
+    expect(data.list.items[0].store).toBeNull();
+  });
+
+  it("creates an empty list", async () => {
+    const { success, data } = await callTool({
+      name: "To fill later",
+      items: [],
+    });
+
+    expect(success).toBe(true);
+    expect(data.list.items).toHaveLength(0);
+  });
+
+  it("has the correct tool metadata", () => {
+    expect(tool.name).toBe("create_grocery_list");
+    expect(tool.parameters.required).toContain("name");
+    expect(tool.parameters.required).toContain("items");
   });
 });
 
