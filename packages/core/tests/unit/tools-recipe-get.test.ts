@@ -43,6 +43,7 @@ describe("get_recipe tool", () => {
       instructions: "Cook it",
     });
 
+    await cookLogRepo.logCook({ recipeId: recipe.id });
     await cookLogRepo.logCook({
       recipeId: recipe.id,
       verdict: "banger",
@@ -60,7 +61,7 @@ describe("get_recipe tool", () => {
     await tool.handler({ id: recipe.id }, { respond });
 
     const result = respond.mock.calls[0][1];
-    expect(result.recipe.cookLog).toHaveLength(2);
+    expect(result.recipe.cookLog).toHaveLength(3);
     // Most recent first
     expect(result.recipe.cookLog[0].verdict).toBe("make_again");
     expect(result.recipe.cookLog[1].verdict).toBe("banger");

@@ -67,7 +67,7 @@ export function createTestDb() {
     CREATE TABLE cook_log (
       id text PRIMARY KEY NOT NULL,
       recipe_id text NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-      verdict text NOT NULL,
+      verdict text,
       notes text,
       modifications text,
       photos text,
