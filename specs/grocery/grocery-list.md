@@ -92,6 +92,36 @@ Generate a grocery list from a meal plan, subtracting inventory.
 }
 ```
 
+### `create_grocery_list`
+Create an ad-hoc grocery list without a meal plan — a plain shopping list.
+
+**Parameters:**
+```json
+{
+  "name": "Party supplies",
+  "items": [
+    { "name": "chips", "quantity": 2, "unit": "bags", "store": "wegmans" },
+    { "name": "salsa", "quantity": 1, "unit": "jar" }
+  ]
+}
+```
+
+Items only require `name`; `quantity`, `unit`, `category`, and `store` are all optional.
+
+**Success:**
+```json
+{
+  "ok": true,
+  "list": {
+    "id": "gl2",
+    "name": "Party supplies",
+    "mealPlanId": null,
+    "status": "draft",
+    "items": [...]
+  }
+}
+```
+
 ### `get_grocery_list`
 Get a grocery list with all items.
 

@@ -35,6 +35,7 @@ import { PreferenceSummaryService } from "./services/preference-summary.service.
 import { createGenerateGroceryListTool } from "./tools/grocery-generate.js";
 import { createGetGroceryListTool } from "./tools/grocery-get.js";
 import { createUpdateGroceryListTool } from "./tools/grocery-update.js";
+import { createCreateGroceryListTool } from "./tools/grocery-create.js";
 import { OrderRepository } from "./repositories/order.repo.js";
 import { createStartOrderTool } from "./tools/order-start.js";
 import { createUpdateOrderTool } from "./tools/order-update.js";
@@ -110,6 +111,7 @@ const plugin = {
 
     // Grocery tools
     api.registerTool(createGenerateGroceryListTool(groceryService));
+    api.registerTool(createCreateGroceryListTool(groceryRepo));
     api.registerTool(createGetGroceryListTool(groceryRepo));
     api.registerTool(createUpdateGroceryListTool(groceryRepo));
 
