@@ -37,8 +37,9 @@ Multiple Claude Code sessions work on this repo simultaneously using shared task
 - **Claim before starting.** Check the shared task list. Claim your task before working on it.
 - **One package per agent.** Stay in your package (`packages/core`, `packages/store-instacart`, etc.). Don't edit files another agent owns.
 - **Shared files need coordination.** Root `package.json`, `CLAUDE.md`, `specs/shared/data-model.md` — ask the user before editing.
-- **Push and PR when done.** Each worktree produces a branch. Push it, open a PR. Keep PRs under 500 lines and independent from other agents' branches.
+- **Push, PR, and merge when done.** Each worktree produces a branch. Push it, open a PR, wait for CI tests to pass, then merge. Keep PRs under 500 lines and independent from other agents' branches.
 - **Tests must pass.** Run `npm test` in your worktree before marking a task complete.
+- **Test coverage is mandatory.** Every feature or bug fix must include tests. Aim for ≥80% line coverage on new code. Test behavior rules from the spec, not just happy paths — cover edge cases, error states, and boundary conditions. A PR without adequate test coverage should not be merged.
 
 ## Conventions
 
