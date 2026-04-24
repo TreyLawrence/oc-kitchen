@@ -69,7 +69,8 @@ const plugin = {
     const deductionService = new InventoryDeductionService(inventoryRepo, recipeRepo, userProfileRepo);
     const mealPlanRepo = new MealPlanRepository(db);
     const groceryRepo = new GroceryRepository(db);
-    const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo);
+    const cutoffService = new ButcherBoxCutoffService(userProfileRepo, mealPlanRepo, recipeRepo);
+    const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo, cutoffService);
     const autoTagger = new AutoTaggerService(userProfileRepo);
     const preferenceSummary = new PreferenceSummaryService(cookLogRepo, userProfileRepo);
     const exploreRatioService = new ExploreRatioService(cookLogRepo, userProfileRepo);
@@ -126,7 +127,6 @@ const plugin = {
     api.registerTool(createGetOrderTool(orderRepo));
 
     // ButcherBox tools
-    const cutoffService = new ButcherBoxCutoffService(userProfileRepo, mealPlanRepo, recipeRepo);
     api.registerTool(createCheckButcherboxCutoffTool(cutoffService));
   },
 };

@@ -3,6 +3,7 @@ import { MealPlanRepository } from "../repositories/meal-plan.repo.js";
 import { InventoryRepository } from "../repositories/inventory.repo.js";
 import { GroceryRepository } from "../repositories/grocery.repo.js";
 import { UserProfileRepository } from "../repositories/user-profile.repo.js";
+import { ButcherBoxCutoffService, CutoffStatus } from "./butcherbox-cutoff.service.js";
 
 interface AggregatedIngredient {
   name: string;
@@ -85,17 +86,23 @@ export class GroceryGenerationService {
     private inventoryRepo: InventoryRepository,
     private groceryRepo: GroceryRepository,
     private profileRepo?: UserProfileRepository,
+    private cutoffService?: ButcherBoxCutoffService,
   ) {}
 
   async generateFromPlan(mealPlanId: string, subtractInventory = true, includePantryStaples = false) {
     const plan = await this.mealPlanRepo.getById(mealPlanId);
     if (!plan) throw new Error("Meal plan not found");
 
-    // Check ButcherBox subscription
+    // Check ButcherBox subscription and cutoff window
     let hasButcherBox = false;
+    let bbCutoffStatus: CutoffStatus | null = null; // null = no cutoff service, skip check
     if (this.profileRepo) {
       const bbPref = await this.profileRepo.getPreference("butcherbox_subscription");
       hasButcherBox = bbPref === true;
+    }
+    if (hasButcherBox && this.cutoffService) {
+      const cutoffResult = await this.cutoffService.checkCutoff();
+      bbCutoffStatus = cutoffResult.status;
     }
 
     // 1. Collect ingredients from recipe entries (skip leftovers, skip, prep-only)
@@ -225,7 +232,7 @@ export class GroceryGenerationService {
       quantity: ing.quantity,
       unit: ing.unit,
       category: ing.category,
-      store: this.assignStore(ing, hasButcherBox),
+      store: this.assignStore(ing, hasButcherBox, bbCutoffStatus),
       recipeId: ing.recipeIds[0],
     }));
 
@@ -246,8 +253,30 @@ export class GroceryGenerationService {
       storeBreakdown[store].itemCount++;
     }
 
-    // 8. Generate warnings for store minimums
+    // 7. Generate warnings
     const warnings: string[] = [];
+
+    // ButcherBox cutoff warning
+    if (hasButcherBox && bbCutoffStatus !== null && (bbCutoffStatus === "past" || bbCutoffStatus === "no_cutoff_set")) {
+      const bbFallbackItems = items.filter(
+        (i) => i.category === "protein" && i.store === "instacart" &&
+          BUTCHERBOX_PROTEINS.some((p) => i.name.toLowerCase().includes(p))
+      );
+      if (bbFallbackItems.length > 0) {
+        const names = bbFallbackItems.map((i) => i.name).join(", ");
+        if (bbCutoffStatus === "past") {
+          warnings.push(
+            `ButcherBox customization cutoff has passed — ${names} assigned to Instacart instead.`
+          );
+        } else {
+          warnings.push(
+            `No ButcherBox cutoff date set — ${names} assigned to Instacart. Set your next cutoff date to route proteins to ButcherBox.`
+          );
+        }
+      }
+    }
+
+    // Store minimum warnings
     for (const [store, minimum] of Object.entries(STORE_MINIMUMS)) {
       if (storeBreakdown[store] && storeBreakdown[store].itemCount < 4) {
         const storeName = store === "weee" ? "Weee!" : store;
@@ -265,13 +294,16 @@ export class GroceryGenerationService {
     };
   }
 
-  private assignStore(ing: AggregatedIngredient, hasButcherBox: boolean): string {
+  private assignStore(ing: AggregatedIngredient, hasButcherBox: boolean, cutoffStatus: CutoffStatus | null): string {
     const nameLower = ing.name.toLowerCase();
 
-    // Check if it's a ButcherBox protein
+    // Check if it's a ButcherBox protein — only assign if cutoff window is open
     if (hasButcherBox && ing.category === "protein") {
       if (BUTCHERBOX_PROTEINS.some((p) => nameLower.includes(p))) {
-        return "butcherbox";
+        // No cutoff service → assume window is open (backward compat)
+        if (cutoffStatus === null) return "butcherbox";
+        const windowOpen = cutoffStatus === "ok" || cutoffStatus === "upcoming";
+        return windowOpen ? "butcherbox" : "instacart";
       }
     }
 
