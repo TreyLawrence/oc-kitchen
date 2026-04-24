@@ -53,6 +53,31 @@ const STORE_MINIMUMS: Record<string, number> = {
   weee: 35,
 };
 
+// Words that are modifiers, not the core ingredient identity.
+// Stripping these lets "yellow onion" and "onion" share a key.
+const MODIFIER_WORDS = new Set([
+  // colors
+  "yellow", "red", "green", "white", "purple", "orange", "black",
+  // freshness / state
+  "fresh", "dried", "frozen", "canned", "jarred",
+  // size
+  "small", "medium", "large", "baby", "whole", "mini",
+]);
+
+/**
+ * Produce a canonical aggregation key for an ingredient name.
+ * Strips color, freshness, and size modifiers so that
+ * "yellow onion" → "onion", "fresh basil" → "basil", etc.
+ */
+function normalizeIngredientName(name: string): string {
+  const words = name
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter((w) => !MODIFIER_WORDS.has(w));
+  return words.join(" ") || name.toLowerCase().trim();
+}
+
 export class GroceryGenerationService {
   constructor(
     private recipeRepo: RecipeRepository,
@@ -101,14 +126,18 @@ export class GroceryGenerationService {
       }
     }
 
-    // 2. Aggregate duplicates
+    // 2. Aggregate duplicates (fuzzy — "yellow onion" + "onion" merge)
     const aggregated = new Map<string, AggregatedIngredient>();
     for (const ing of allIngredients) {
-      const key = ing.name.toLowerCase();
+      const key = normalizeIngredientName(ing.name);
       if (aggregated.has(key)) {
         const existing = aggregated.get(key)!;
         if (existing.quantity !== null && ing.quantity !== null) {
           existing.quantity += ing.quantity;
+        }
+        // Keep the more specific (longer) name for display
+        if (ing.name.length > existing.name.length) {
+          existing.name = ing.name;
         }
         if (!existing.recipeIds.includes(ing.recipeId)) {
           existing.recipeIds.push(ing.recipeId);

@@ -294,20 +294,73 @@ Modify an existing plan — swap recipes, change days, update status.
 ```
 
 ### `generate_prep_list`
-Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for a specific day's recipe. The list includes only tasks that don't require cooking knowledge — chopping, measuring, marinating, assembling.
+Generate a prep list for a household helper (nanny, partner, etc.). Supports two modes: **single-recipe** (pass `recipeId`) or **meal-plan day** (pass `mealPlanId` + `dayOfWeek` to get all recipes for that day). Either `recipeId` or `mealPlanId` + `dayOfWeek` must be provided. The list includes only tasks that don't require cooking knowledge — chopping, measuring, marinating, assembling.
 
 **Parameters:**
 ```json
 {
-  "recipeId": "abc123",
-  "helperName": "Maria"           // optional, for personalized messaging
+  "recipeId": "abc123",            // option A: single recipe
+  "mealPlanId": "plan1",           // option B: all recipes for a meal plan day
+  "dayOfWeek": 2,                  // required with mealPlanId (0=Mon..6=Sun)
+  "helperName": "Maria"            // optional, for personalized messaging
 }
 ```
 
-**Success:**
+**Success (single-recipe mode):**
 ```json
 {
   "ok": true,
+  "action": "generate_prep_list",
+  "recipe": {
+    "title": "Gochujang Chicken",
+    "ingredients": [...],
+    "instructions": "...",
+    "prepMinutes": 20
+  },
+  "household": {
+    "householdSize": 2,
+    "dinnerTargetTime": "19:30",
+    "helpers": ["Maria"]
+  },
+  "helperName": "Maria",
+  "instructions": "Read this recipe and extract ONLY prep tasks that don't require cooking knowledge..."
+}
+```
+
+**Success (meal-plan day mode):**
+```json
+{
+  "ok": true,
+  "action": "generate_prep_list",
+  "recipes": [
+    {
+      "title": "Gochujang Chicken",
+      "ingredients": [...],
+      "instructions": "...",
+      "prepMinutes": 20,
+      "entryCategory": "exploit"
+    },
+    {
+      "title": "Chicken Stock",
+      "ingredients": [...],
+      "instructions": "...",
+      "prepMinutes": 15,
+      "entryCategory": "prep"
+    }
+  ],
+  "household": {
+    "householdSize": 2,
+    "dinnerTargetTime": "19:30",
+    "helpers": ["Maria"]
+  },
+  "helperName": "Maria",
+  "instructions": "Read these recipes and extract ONLY prep tasks... When multiple recipes share prep (e.g. both need diced onion), combine into a single task."
+}
+```
+
+**Agent-generated output** (what the agent produces from the context above):
+```json
+{
   "prepList": {
     "recipeTitle": "Gochujang Chicken",
     "dinnerTime": "7:30pm",
@@ -325,7 +378,7 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 }
 ```
 
-**Design:** The agent generates the prep list from the recipe's ingredients and instructions using its own intelligence. It extracts prep-only tasks (no heat, no technique) and writes them as simple, standalone instructions that someone unfamiliar with the recipe can follow.
+**Design:** The tool gathers recipe and household context; the agent generates the prep list using its own intelligence. It extracts prep-only tasks (no heat, no technique) and writes them as simple, standalone instructions that someone unfamiliar with the recipe can follow. In meal-plan day mode, the agent should look for cross-recipe prep deduplication (e.g., two recipes needing diced onion → one combined task).
 
 ## Behavior Rules
 
@@ -366,6 +419,35 @@ Generate a simple, standalone prep list for a helper (nanny, partner, etc.) for 
 14. **Prep dependencies:** If a recipe has a sub-recipe or requires advance prep (overnight marinade, stock, dough rise), schedule the prep as a separate entry the day before, linked via `dependsOn`.
 15. **Prep entries are lightweight:** A prep entry doesn't take a full cooking night — "simmer stock for 2 hours" can coexist with a regular dinner recipe on the same night.
 16. **The agent should identify prep needs** by analyzing recipe instructions for keywords like "overnight", "the day before", "let rest for X hours", "make ahead".
+
+#### Prep Dependency Detection
+
+The `suggest_meal_plan` tool automatically scans recipe instructions for advance-prep needs and includes `prepHints` in each recipe summary. The agent uses these hints to schedule prep entries on prior days.
+
+**Detection keywords and lead times:**
+
+| Pattern | Lead time | Example |
+|---------|-----------|---------|
+| "overnight" (marinade, brine, soak, rest, refrigerate, rise, ferment, chill) | 12 hours | "marinate overnight" |
+| "the day before", "day ahead", "a day in advance" | 24 hours | "make the dough the day before" |
+| "X hours" before/ahead/in advance, rest/rise/marinate/chill for X hours (≥ 4h) | X hours | "let rest for 8 hours" |
+| "make ahead", "prepare ahead", "prep ahead" | 12 hours | "sauce can be made ahead" |
+
+**Output per recipe (included in `suggest_meal_plan` context):**
+
+```json
+{
+  "id": "abc123",
+  "title": "Overnight Focaccia",
+  "prepHints": [
+    { "keyword": "overnight", "leadTimeHours": 12, "snippet": "...let the dough rise overnight in the fridge..." }
+  ]
+}
+```
+
+- `prepHints` is an empty array if no advance prep is detected.
+- The agent should schedule a `category: "prep"` entry on the prior day for any recipe with non-empty `prepHints`, linked via `dependsOn`.
+- If the prep night is a skip day, the agent warns and suggests rescheduling.
 
 ### Prep Delegation
 17. **Helpers can do prep.** The user can designate household helpers (nanny, partner) who can do prep tasks. The agent generates a `generate_prep_list` for the helper — simple, standalone instructions (chop this, measure that, marinate these).

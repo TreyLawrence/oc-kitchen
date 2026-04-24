@@ -224,10 +224,12 @@ Log a cooking session with verdict, notes, modifications, and photos.
 2. **Rating is a four-tier system:** `banger`, `make_again`, `try_again_with_tweaks`, `dont_make_again`. No numeric stars.
 3. **Recipe-level verdict** is derived from the most recent cook log entry's rating. A recipe can change tiers over time (e.g., "try again with tweaks" → "banger" after modifications work out).
 4. **Source is immutable** after creation — a manual recipe stays manual, an imported recipe stays imported.
-5. **Tags** are stored as a JSON array. There are three kinds:
-   - **Equipment tags** — auto-derived from recipe content (e.g., "big green egg", "instant pot", "wok"). Matched against the user's equipment list.
-   - **Duration tags** — auto-derived from total time (prep + cook): "quick" (< 30 min), "weeknight" (< 60 min), "project" (2+ hours). No tag for 60-120 min.
-   - **User tags** — free-form, manually added by the user.
+5. **Tags** are stored as a JSON array of objects with `tag` and `type` fields. There are five kinds:
+   - **Equipment tags** (`type: "equipment"`) — auto-derived from recipe content (e.g., "big green egg", "instant pot", "wok"). Matched against the user's equipment list.
+   - **Duration tags** (`type: "duration"`) — auto-derived from total time (prep + cook): "quick" (< 30 min), "weeknight" (< 60 min), "project" (2+ hours). No tag for 60-120 min.
+   - **Cuisine tags** (`type: "cuisine"`) — agent-classified from recipe content using a controlled vocabulary. A recipe can have multiple cuisines.
+   - **Seasonal tags** (`type: "seasonal"`) — agent-classified based on recipe characteristics (summer, fall, winter, spring).
+   - **User tags** (`type: "user"`) — free-form, manually added by the user.
 6. **Deleting a recipe** does not cascade to meal plan entries — it sets their `recipeId` to null and preserves `customTitle` as a fallback.
 7. **Importing** must handle at minimum: Bon Appetit, NYT Cooking, Woks of Life. Other sites are best-effort.
 8. **AI generation** should factor in user preferences (from `user_preferences`) and equipment (from `user_equipment`) when available.
@@ -242,11 +244,66 @@ Log a cooking session with verdict, notes, modifications, and photos.
 - Logging a verdict for a recipe that has never been cooked → not allowed, must log a cook first
 - Searching with no filters → returns all recipes, newest first, limited to 20
 
+## Tag Improvements
+
+### Auto-tagging on update
+When a recipe's timing fields (`prepMinutes`, `cookMinutes`) or instructions change via `update_recipe`, auto-tags must be regenerated. Duration tags should reflect the new times, and equipment tags should reflect the new instructions. User tags must be preserved — only auto-generated tags are replaced.
+
+### Tag type distinction
+Tags need a way to distinguish auto-generated tags from user tags so that auto-tags can be safely regenerated without clobbering user tags. Store tags as objects with a `type` field:
+
+```json
+[
+  { "tag": "weeknight", "type": "duration" },
+  { "tag": "big green egg", "type": "equipment" },
+  { "tag": "date night", "type": "user" },
+  { "tag": "korean", "type": "cuisine" }
+]
+```
+
+**Migration:** Existing plain-string tags are treated as `"user"` type. Auto-tagger re-runs on next update to backfill typed auto-tags.
+
+### Cuisine tags
+Auto-derive cuisine tags from recipe content (title, ingredients, instructions). The agent classifies the cuisine — this is an agent-side tool, not deterministic code. The `auto_tag_recipe` tool gathers recipe context and returns instructions for the agent to classify cuisine from a controlled vocabulary:
+
+- Asian: chinese, japanese, korean, thai, vietnamese, indian, filipino
+- Western: italian, french, mexican, american, mediterranean, greek, spanish
+- Other: middle-eastern, ethiopian, cajun, caribbean, soul-food
+
+A recipe can have multiple cuisine tags (e.g., a Korean-Mexican fusion taco gets both). The agent picks what fits — no forced single-label.
+
+### Seasonal tags
+Auto-derive seasonal tags based on recipe characteristics. Like cuisine tags, this is agent-side — the tool provides recipe context and the agent applies seasonal tags when appropriate:
+
+- `summer` — grilling, cold soups, salads, no-cook, light
+- `fall` — braising, squash, apples, warm spices
+- `winter` — stews, comfort food, long braises, root vegetables
+- `spring` — fresh herbs, asparagus, peas, light proteins
+
+Seasonal tags are suggestions, not hard rules. A stew is fine in summer if you want it. These tags help with meal plan suggestions when the agent considers what's in season.
+
+### Tag search robustness
+Replace the current LIKE-based JSON tag search (`%"tag"%`) with proper JSON array querying. The current approach has edge cases — e.g., searching for tag `"quick"` could substring-match a hypothetical tag `"quick-pickle"`. With the move to object-based tags, search should parse the JSON and match against the `tag` field.
+
+### `auto_tag_recipe` tool
+New agent-side tool for on-demand tag regeneration. Gathers recipe context (title, ingredients, instructions, timing) and user equipment, then returns instructions for the agent to classify cuisine and season. The agent responds with the tags, and the tool merges them with existing user tags.
+
+**Parameters:** `{ "recipeId": "abc123" }`
+
+**Process:**
+1. Fetch recipe and user equipment
+2. Return recipe context + tagging instructions to the agent
+3. Agent classifies cuisine and season
+4. Tool merges agent-provided tags with auto-generated duration/equipment tags and existing user tags
+5. Saves updated tags to the recipe
+
+This tool is called automatically on create/import/generate, and can be called manually to re-tag existing recipes.
+
 ## Design Decisions
 
 1. **Equipment** — user-profile data collected during onboarding, not hardcoded. See `specs/shared/onboarding.md` (TODO).
 2. **Recipe import** — hybrid approach: extract JSON-LD schema.org/Recipe structured data first (free, reliable), fall back to LLM parsing when missing.
 3. **Rating system** — four-tier verdict (banger / make again / try again with tweaks / don't make again). No numeric stars. "Don't make again" is a hard block from future suggestions.
-4. **Auto-tags** — equipment tags (matched from recipe content against user's equipment list) and duration tags (quick / weeknight / project). All other tags are manual.
+4. **Auto-tags** — four auto-tag types: equipment (matched against user's equipment), duration (quick / weeknight / project), cuisine (agent-classified), and seasonal (agent-classified). User tags are free-form and never overwritten by auto-tagging. Tags are objects with `type` field so auto-tags can be regenerated safely.
 5. **Cook log detail** — verdict + free-text notes + structured modifications (original/modification pairs) + photos. No "who cooked" for v1 (single user per account), design for multi-cook families later. Photo storage TBD (local filesystem for dev, S3/R2 for prod).
 6. **Preference learning** — dual approach. Lightweight preference summary in the DB (updated periodically from cook history — cuisine affinities, ingredient preferences, common modifications, equipment comfort). Raw recent cook log entries also passed as context to Claude at generation time. DB summary handles big picture; raw context gives Claude the nuance.

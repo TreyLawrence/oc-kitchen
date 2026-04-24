@@ -1,6 +1,12 @@
 import { CookLogRepository } from "../repositories/cook-log.repo.js";
+import { RecipeRepository } from "../repositories/recipe.repo.js";
+import { PreferenceSummaryService } from "../services/preference-summary.service.js";
 
-export function createLogCookTool(repo: CookLogRepository) {
+export function createLogCookTool(
+  repo: CookLogRepository,
+  recipeRepo?: RecipeRepository,
+  preferenceSummary?: PreferenceSummaryService
+) {
   return {
     name: "log_cook",
     description:
@@ -39,7 +45,22 @@ export function createLogCookTool(repo: CookLogRepository) {
     handler: async (params: any, { respond }: any) => {
       try {
         const entry = await repo.logCook(params);
-        respond(true, { ok: true, entry });
+
+        // Check if preference summary should be regenerated
+        let summaryContext = null;
+        if (preferenceSummary && recipeRepo) {
+          const recipe = await recipeRepo.getById(params.recipeId);
+          const recipeTags: string[] = recipe?.tags
+            ? (() => { try { return JSON.parse(recipe.tags); } catch { return []; } })()
+            : [];
+          const trigger = await preferenceSummary.checkTrigger(params.verdict, recipeTags);
+          if (trigger.shouldRegenerate) {
+            summaryContext = await preferenceSummary.gatherContext();
+            summaryContext = { ...summaryContext, triggerReason: trigger.reason };
+          }
+        }
+
+        respond(true, { ok: true, entry, summaryContext });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
       }

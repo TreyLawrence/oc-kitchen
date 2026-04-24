@@ -31,9 +31,19 @@ import { createGeneratePrepListTool } from "./tools/meal-plan-prep-list.js";
 import { GroceryRepository } from "./repositories/grocery.repo.js";
 import { GroceryGenerationService } from "./services/grocery-generation.service.js";
 import { AutoTaggerService } from "./services/auto-tagger.service.js";
+import { PreferenceSummaryService } from "./services/preference-summary.service.js";
 import { createGenerateGroceryListTool } from "./tools/grocery-generate.js";
 import { createGetGroceryListTool } from "./tools/grocery-get.js";
 import { createUpdateGroceryListTool } from "./tools/grocery-update.js";
+import { OrderRepository } from "./repositories/order.repo.js";
+import { createStartOrderTool } from "./tools/order-start.js";
+import { createUpdateOrderTool } from "./tools/order-update.js";
+import { createGetOrderTool } from "./tools/order-get.js";
+import { InventorySyncService } from "./services/inventory-sync.service.js";
+import { createSyncDeliveryToInventoryTool } from "./tools/inventory-sync.js";
+import { createAutoTagRecipeTool } from "./tools/auto-tag-recipe.js";
+import { ButcherBoxCutoffService } from "./services/butcherbox-cutoff.service.js";
+import { createCheckButcherboxCutoffTool } from "./tools/butcherbox-cutoff.js";
 
 interface PluginApi {
   registerTool(tool: unknown): void;
@@ -58,6 +68,7 @@ const plugin = {
     const groceryRepo = new GroceryRepository(db);
     const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo);
     const autoTagger = new AutoTaggerService(userProfileRepo);
+    const preferenceSummary = new PreferenceSummaryService(cookLogRepo, userProfileRepo);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
@@ -68,9 +79,9 @@ const plugin = {
 
     api.registerTool(createGetRecipeTool(recipeRepo, cookLogRepo));
     api.registerTool(createSearchRecipesTool(recipeRepo));
-    api.registerTool(createUpdateRecipeTool(recipeRepo));
+    api.registerTool(createUpdateRecipeTool(recipeRepo, autoTagger));
     api.registerTool(createDeleteRecipeTool(recipeRepo));
-    api.registerTool(createLogCookTool(cookLogRepo));
+    api.registerTool(createLogCookTool(cookLogRepo, recipeRepo, preferenceSummary));
 
     // Recipe discovery tools
     api.registerTool(createImportRecipeTool(recipeRepo, autoTagger));
@@ -78,26 +89,39 @@ const plugin = {
     api.registerTool(createDiscoverRecipesTool(userProfileRepo));
     api.registerTool(createGenerateRecipeTool(userProfileRepo));
     api.registerTool(createSaveGeneratedRecipeTool(recipeRepo, autoTagger));
+    api.registerTool(createAutoTagRecipeTool(recipeRepo, userProfileRepo, autoTagger));
 
     // Inventory tools
     api.registerTool(createListInventoryTool(inventoryRepo));
     api.registerTool(createUpdateInventoryTool(inventoryRepo));
     api.registerTool(createDeductRecipeIngredientsTool(deductionService));
     api.registerTool(createVerifyInventoryTool(inventoryRepo, mealPlanRepo, recipeRepo));
+    const syncService = new InventorySyncService(inventoryRepo, groceryRepo);
+    api.registerTool(createSyncDeliveryToInventoryTool(syncService));
 
     // Meal planning tools
     api.registerTool(createCreateMealPlanTool(mealPlanRepo));
     api.registerTool(createGetMealPlanTool(mealPlanRepo));
     api.registerTool(createUpdateMealPlanTool(mealPlanRepo));
-    api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo));
+    api.registerTool(createSuggestMealPlanTool(userProfileRepo, recipeRepo, inventoryRepo, cookLogRepo, preferenceSummary));
     api.registerTool(createCheckCalendarTool(userProfileRepo));
     api.registerTool(createBlockCookingTimeTool(userProfileRepo, mealPlanRepo, recipeRepo));
-    api.registerTool(createGeneratePrepListTool(recipeRepo));
+    api.registerTool(createGeneratePrepListTool(recipeRepo, mealPlanRepo, userProfileRepo));
 
     // Grocery tools
     api.registerTool(createGenerateGroceryListTool(groceryService));
     api.registerTool(createGetGroceryListTool(groceryRepo));
     api.registerTool(createUpdateGroceryListTool(groceryRepo));
+
+    // Order tools
+    const orderRepo = new OrderRepository(db);
+    api.registerTool(createStartOrderTool(orderRepo, groceryRepo));
+    api.registerTool(createUpdateOrderTool(orderRepo));
+    api.registerTool(createGetOrderTool(orderRepo));
+
+    // ButcherBox tools
+    const cutoffService = new ButcherBoxCutoffService(userProfileRepo, mealPlanRepo, recipeRepo);
+    api.registerTool(createCheckButcherboxCutoffTool(cutoffService));
   },
 };
 

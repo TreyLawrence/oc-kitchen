@@ -2,6 +2,8 @@ import { UserProfileRepository } from "../repositories/user-profile.repo.js";
 import { RecipeRepository } from "../repositories/recipe.repo.js";
 import { InventoryRepository } from "../repositories/inventory.repo.js";
 import { CookLogRepository } from "../repositories/cook-log.repo.js";
+import { detectPrepDependencies } from "../services/prep-dependency.service.js";
+import { PreferenceSummaryService } from "../services/preference-summary.service.js";
 
 /**
  * Gathers all context needed for the agent to build a meal plan.
@@ -13,6 +15,7 @@ export function createSuggestMealPlanTool(
   recipeRepo: RecipeRepository,
   inventoryRepo: InventoryRepository,
   cookLogRepo: CookLogRepository,
+  preferenceSummary?: PreferenceSummaryService,
 ) {
   return {
     name: "suggest_meal_plan",
@@ -63,6 +66,16 @@ export function createSuggestMealPlanTool(
         const expiring = await inventoryRepo.list({ expiringSoon: true });
         const leftovers = await inventoryRepo.list({ query: "Leftover:" });
 
+        // Check if preference summary needs regenerating before planning
+        let summaryRefresh = null;
+        if (preferenceSummary) {
+          const staleness = await preferenceSummary.checkStaleness();
+          if (staleness.shouldRegenerate) {
+            summaryRefresh = await preferenceSummary.gatherContext();
+            summaryRefresh = { ...summaryRefresh, triggerReason: staleness.reason };
+          }
+        }
+
         respond(true, {
           ok: true,
           action: "build_meal_plan",
@@ -85,9 +98,10 @@ export function createSuggestMealPlanTool(
             },
             constraints: params.constraints || {},
             cookingNights: params.cookingNights || [],
+            summaryRefresh,
           },
           instructions:
-            `Build a weekly meal plan for ${params.weekStart || "this week"}. Use the context above. Target ${Math.round(exploreRatio * 100)}% explore (new/untried recipes) and ${Math.round((1 - exploreRatio) * 100)}% exploit (bangers + make-agains). Match recipes to available cooking time per night. Account for leftovers (household size: ${householdSize}). Use expiring inventory items first. After building the plan, call create_meal_plan to save it.`,
+            `Build a weekly meal plan for ${params.weekStart || "this week"}. Use the context above. Target ${Math.round(exploreRatio * 100)}% explore (new/untried recipes) and ${Math.round((1 - exploreRatio) * 100)}% exploit (bangers + make-agains). Match recipes to available cooking time per night. Account for leftovers (household size: ${householdSize}). Use expiring inventory items first. If any recipe has prepHints (non-empty array), schedule a "Prep:" entry on the prior day with category "prep", and set dependsOn on the main recipe entry to link them. After building the plan, call create_meal_plan to save it.`,
         });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
@@ -106,5 +120,6 @@ function summarize(recipe: any) {
     cookMinutes: recipe.cookMinutes,
     servings: recipe.servings,
     tags: recipe.tags ? JSON.parse(recipe.tags) : [],
+    prepHints: detectPrepDependencies(recipe.instructions || ""),
   };
 }

@@ -314,6 +314,146 @@ describe("GroceryGenerationService", () => {
     expect(result.warnings.some((w: string) => w.includes("$35"))).toBe(true);
   });
 
+  // Spec rule 1: "Fuzzy match on name — 'yellow onion' and 'onion' are the same"
+  it("fuzzy-merges 'yellow onion' and 'onion' into one item", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Recipe A", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "yellow onion", quantity: 2, unit: "count", category: "produce" }],
+    });
+    const r2 = await recipeRepo.create({
+      title: "Recipe B", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "onion", quantity: 1, unit: "count", category: "produce" }],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [
+        { dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" },
+        { dayOfWeek: 1, mealType: "dinner", recipeId: r2.id, category: "exploit" },
+      ],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const onions = result.list.items.filter((i: any) =>
+      i.name.toLowerCase().includes("onion")
+    );
+    expect(onions).toHaveLength(1);
+    expect(onions[0].quantity).toBe(3); // 2 + 1
+  });
+
+  it("fuzzy-merges 'red bell pepper' and 'bell pepper'", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Recipe A", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "red bell pepper", quantity: 2, unit: "count", category: "produce" }],
+    });
+    const r2 = await recipeRepo.create({
+      title: "Recipe B", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "bell pepper", quantity: 1, unit: "count", category: "produce" }],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [
+        { dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" },
+        { dayOfWeek: 1, mealType: "dinner", recipeId: r2.id, category: "exploit" },
+      ],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const peppers = result.list.items.filter((i: any) =>
+      i.name.toLowerCase().includes("pepper")
+    );
+    expect(peppers).toHaveLength(1);
+    expect(peppers[0].quantity).toBe(3);
+  });
+
+  it("does NOT merge distinct items like 'chicken thighs' and 'chicken breast'", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Recipe A", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "chicken thighs", quantity: 2, unit: "lbs", category: "protein" }],
+    });
+    const r2 = await recipeRepo.create({
+      title: "Recipe B", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "chicken breast", quantity: 1, unit: "lbs", category: "protein" }],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [
+        { dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" },
+        { dayOfWeek: 1, mealType: "dinner", recipeId: r2.id, category: "exploit" },
+      ],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const chicken = result.list.items.filter((i: any) =>
+      i.name.toLowerCase().includes("chicken")
+    );
+    expect(chicken).toHaveLength(2);
+  });
+
+  it("prefers the more specific name when fuzzy-merging", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Recipe A", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "onion", quantity: 1, unit: "count", category: "produce" }],
+    });
+    const r2 = await recipeRepo.create({
+      title: "Recipe B", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "yellow onion", quantity: 2, unit: "count", category: "produce" }],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [
+        { dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" },
+        { dayOfWeek: 1, mealType: "dinner", recipeId: r2.id, category: "exploit" },
+      ],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const onions = result.list.items.filter((i: any) =>
+      i.name.toLowerCase().includes("onion")
+    );
+    expect(onions).toHaveLength(1);
+    expect(onions[0].name).toBe("yellow onion"); // more specific wins
+  });
+
+  it("fuzzy-merges 'fresh basil' and 'basil'", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Recipe A", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "fresh basil", quantity: 0.5, unit: "cup", category: "produce" }],
+    });
+    const r2 = await recipeRepo.create({
+      title: "Recipe B", source: "manual", instructions: "Cook",
+      ingredients: [{ name: "basil", quantity: 0.25, unit: "cup", category: "produce" }],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [
+        { dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" },
+        { dayOfWeek: 1, mealType: "dinner", recipeId: r2.id, category: "exploit" },
+      ],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const basil = result.list.items.filter((i: any) =>
+      i.name.toLowerCase().includes("basil")
+    );
+    expect(basil).toHaveLength(1);
+    expect(basil[0].quantity).toBeCloseTo(0.75);
+  });
+
   // Spec rule 6: "Pantry staples — common items excluded by default"
   it("excludes pantry staples from grocery list by default", async () => {
     const r1 = await recipeRepo.create({

@@ -29,7 +29,10 @@ describe("RecipeRepository", () => {
           { name: "pork shoulder", quantity: 8, unit: "lbs", category: "protein" },
           { name: "yellow mustard", quantity: 0.5, unit: "cup", category: "pantry" },
         ],
-        tags: ["bbq", "big green egg"],
+        tags: [
+          { tag: "bbq", type: "user" },
+          { tag: "big green egg", type: "equipment" },
+        ],
       });
 
       expect(recipe.id).toBeTruthy();
@@ -92,20 +95,30 @@ describe("RecipeRepository", () => {
         title: "Korean Fried Chicken",
         source: "imported",
         instructions: "Double fry",
-        tags: ["korean", "weeknight"],
+        tags: [
+          { tag: "korean", type: "cuisine" },
+          { tag: "weeknight", type: "duration" },
+        ],
         ingredients: [{ name: "chicken wings", quantity: 2, unit: "lbs", category: "protein" }],
       });
       await repo.create({
         title: "Smoked Brisket",
         source: "manual",
         instructions: "12 hours on the BGE",
-        tags: ["bbq", "big green egg", "project"],
+        tags: [
+          { tag: "bbq", type: "user" },
+          { tag: "big green egg", type: "equipment" },
+          { tag: "project", type: "duration" },
+        ],
       });
       await repo.create({
         title: "Quick Stir Fry",
         source: "ai_generated",
         instructions: "Wok it up",
-        tags: ["weeknight", "quick"],
+        tags: [
+          { tag: "weeknight", type: "duration" },
+          { tag: "quick", type: "duration" },
+        ],
       });
     });
 
@@ -122,7 +135,7 @@ describe("RecipeRepository", () => {
       expect(results.recipes[0].title).toBe("Smoked Brisket");
     });
 
-    it("filters by tag", async () => {
+    it("filters by tag name", async () => {
       const results = await repo.search({ tags: ["weeknight"] });
       expect(results.recipes).toHaveLength(2);
     });
@@ -138,6 +151,51 @@ describe("RecipeRepository", () => {
       const results = await repo.search({ limit: 1 });
       expect(results.recipes).toHaveLength(1);
       expect(results.total).toBe(3);
+    });
+  });
+
+  // Spec: Behavior Rule 9 — "Duplicate detection: warn when importing a URL that already exists"
+  describe("findBySourceUrl", () => {
+    it("finds a recipe by its source URL", async () => {
+      await repo.create({
+        title: "Gochujang Chicken",
+        source: "imported",
+        sourceUrl: "https://www.bonappetit.com/recipe/gochujang-chicken",
+        instructions: "Roast it",
+      });
+
+      const found = await repo.findBySourceUrl("https://www.bonappetit.com/recipe/gochujang-chicken");
+      expect(found).not.toBeNull();
+      expect(found!.title).toBe("Gochujang Chicken");
+    });
+
+    it("matches URLs with trailing slash differences", async () => {
+      await repo.create({
+        title: "Mapo Tofu",
+        source: "imported",
+        sourceUrl: "https://thewoksoflife.com/mapo-tofu/",
+        instructions: "Cook it",
+      });
+
+      const found = await repo.findBySourceUrl("https://thewoksoflife.com/mapo-tofu");
+      expect(found).not.toBeNull();
+      expect(found!.title).toBe("Mapo Tofu");
+    });
+
+    it("returns null when URL not found", async () => {
+      const found = await repo.findBySourceUrl("https://example.com/not-here");
+      expect(found).toBeNull();
+    });
+
+    it("returns null when no recipes have source URLs", async () => {
+      await repo.create({
+        title: "Manual Recipe",
+        source: "manual",
+        instructions: "Do it",
+      });
+
+      const found = await repo.findBySourceUrl("https://example.com/recipe");
+      expect(found).toBeNull();
     });
   });
 
@@ -160,19 +218,26 @@ describe("RecipeRepository", () => {
       expect(updated!.instructions).toBe("Do stuff"); // unchanged
     });
 
-    // Spec: Behavior Rule 5 — tags stored as JSON array
+    // Spec: Behavior Rule 5 — tags stored as JSON array of typed objects
     it("updates tags", async () => {
       const created = await repo.create({
         title: "Test",
         source: "manual",
         instructions: "Test",
-        tags: ["old"],
+        tags: [{ tag: "old", type: "user" }],
       });
 
-      await repo.update(created.id, { tags: ["new", "tags"] });
+      await repo.update(created.id, {
+        tags: [
+          { tag: "new", type: "user" },
+          { tag: "quick", type: "duration" },
+        ],
+      });
 
       const updated = await repo.getById(created.id);
-      expect(JSON.parse(updated!.tags!)).toEqual(["new", "tags"]);
+      const tags = JSON.parse(updated!.tags!);
+      expect(tags).toContainEqual({ tag: "new", type: "user" });
+      expect(tags).toContainEqual({ tag: "quick", type: "duration" });
     });
   });
 
