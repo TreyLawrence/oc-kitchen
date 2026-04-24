@@ -37,13 +37,14 @@ export class ExploreRatioService {
     // Get recent cook logs and identify explore cooks (first cook per recipe)
     const allLogs = await this.cookLogRepo.getRecentLogsWithRecipes(100);
 
-    // Walk from oldest to newest to find first cook per recipe
+    // Walk from oldest to newest to find first cook with a verdict per recipe
+    // (verdict-free entries are just "I cooked this" markers, not explore signals)
     const firstCookByRecipe = new Map<
       string,
       { verdict: string; cookedAt: string }
     >();
     for (const log of [...allLogs].reverse()) {
-      if (!firstCookByRecipe.has(log.recipeId)) {
+      if (!firstCookByRecipe.has(log.recipeId) && log.verdict) {
         firstCookByRecipe.set(log.recipeId, {
           verdict: log.verdict,
           cookedAt: log.cookedAt,

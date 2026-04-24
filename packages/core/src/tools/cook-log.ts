@@ -42,7 +42,7 @@ export function createLogCookTool(
           description: "File paths to photos of the cook",
         },
       },
-      required: ["recipeId", "verdict"],
+      required: ["recipeId"],
     },
     handler: async (params: any, { respond }: any) => {
       try {
@@ -50,7 +50,7 @@ export function createLogCookTool(
 
         // Check if preference summary should be regenerated
         let summaryContext = null;
-        if (preferenceSummary && recipeRepo) {
+        if (params.verdict && preferenceSummary && recipeRepo) {
           const recipe = await recipeRepo.getById(params.recipeId);
           const recipeTags: string[] = recipe?.tags
             ? (() => { try { return JSON.parse(recipe.tags); } catch { return []; } })()

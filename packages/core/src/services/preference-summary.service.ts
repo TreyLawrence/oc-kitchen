@@ -35,7 +35,7 @@ export class PreferenceSummaryService {
    * just-logged cook entry. Called after log_cook.
    */
   async checkTrigger(verdict: string, recipeTags: string[]): Promise<TriggerResult> {
-    const totalCount = await this.cookLogRepo.getTotalCount();
+    const totalCount = await this.cookLogRepo.getVerdictCount();
 
     // Trigger: every 5th cook log
     if (totalCount > 0 && totalCount % 5 === 0) {
@@ -103,7 +103,9 @@ export class PreferenceSummaryService {
    * Gather cook log context for the agent to synthesize into a preference summary.
    */
   async gatherContext(): Promise<SummaryContext> {
-    const recentLogs = await this.cookLogRepo.getRecentLogsWithRecipes(30);
+    const allLogs = await this.cookLogRepo.getRecentLogsWithRecipes(30);
+    // Filter out verdict-free cook logs (initial "I cooked this" markers)
+    const recentLogs = allLogs.filter((log: any) => log.verdict !== null);
     const currentSummary = (await this.profileRepo.getPreference("preference_summary")) as string | null;
 
     const verdictCounts: Record<string, number> = {};
