@@ -118,6 +118,7 @@ function summarize(recipe: any) {
     source: recipe.source,
     prepMinutes: recipe.prepMinutes,
     cookMinutes: recipe.cookMinutes,
+    passiveMinutes: recipe.passiveMinutes,
     servings: recipe.servings,
     tags: recipe.tags ? JSON.parse(recipe.tags) : [],
     prepHints: detectPrepDependencies(recipe.instructions || ""),

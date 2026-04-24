@@ -45,6 +45,7 @@ export function createTestDb() {
       servings integer,
       prep_minutes integer,
       cook_minutes integer,
+      passive_minutes integer,
       instructions text NOT NULL,
       verdict text,
       is_favorite integer DEFAULT false,

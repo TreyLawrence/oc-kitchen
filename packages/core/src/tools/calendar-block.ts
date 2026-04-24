@@ -163,25 +163,47 @@ async function buildSchedule(
 
     const prepMin = recipe.prepMinutes || 0;
     const cookMin = recipe.cookMinutes || 0;
+    const passiveMin = recipe.passiveMinutes || 0;
     const totalMin = prepMin + cookMin;
+    const activeMin = prepMin + cookMin - passiveMin;
 
     if (totalMin === 0) {
       skipped.push({ date, reason: `${recipe.title} — no time estimate` });
       continue;
     }
 
-    // Calculate start time: dinner target minus total time
+    // Calculate start time: dinner target minus total elapsed time
+    // (user still needs to start at the same time even with passive periods)
     const targetMin = timeToMinutes(dinnerTargetTime);
     const startMin = targetMin - totalMin;
     const timeLabel = prepMin > 0 ? `${prepMin}p + ${cookMin}c` : `${cookMin}c`;
 
-    events.push({
-      date,
-      title: `Cook: ${recipe.title} (${timeLabel})`,
-      start: minutesToTime(startMin),
-      end: dinnerTargetTime,
-      description: buildDescription(recipe, entry, includePrep),
-    });
+    if (passiveMin > 0) {
+      // Block covers active time only — starts at the same time, ends earlier
+      const activeEndMin = startMin + activeMin;
+      const handsOffStart = minutesToTime(startMin + (prepMin + (cookMin - passiveMin)));
+      const handsOffEnd = minutesToTime(startMin + (prepMin + cookMin));
+
+      events.push({
+        date,
+        title: `Cook: ${recipe.title} (${timeLabel})`,
+        start: minutesToTime(startMin),
+        end: minutesToTime(activeEndMin),
+        description: buildDescription(recipe, entry, includePrep, {
+          handsOffStart,
+          handsOffEnd,
+          dinnerReady: dinnerTargetTime,
+        }),
+      });
+    } else {
+      events.push({
+        date,
+        title: `Cook: ${recipe.title} (${timeLabel})`,
+        start: minutesToTime(startMin),
+        end: dinnerTargetTime,
+        description: buildDescription(recipe, entry, includePrep),
+      });
+    }
 
     // If this is a prep entry and includePrep is true, add a separate prep block
     if (category === "prep" && includePrep && prepMin > 0) {
@@ -198,15 +220,25 @@ async function buildSchedule(
   return { ok: true, events, skipped };
 }
 
-function buildDescription(recipe: any, entry: any, _includePrep: boolean): string {
+interface HandsOffInfo {
+  handsOffStart: string;
+  handsOffEnd: string;
+  dinnerReady: string;
+}
+
+function buildDescription(
+  recipe: any,
+  entry: any,
+  _includePrep: boolean,
+  handsOff?: HandsOffInfo,
+): string {
   const parts: string[] = [recipe.title];
 
   if (recipe.prepMinutes) parts.push(`Prep: ${recipe.prepMinutes} min`);
   if (recipe.cookMinutes) parts.push(`Cook: ${recipe.cookMinutes} min`);
 
-  // Note hands-off time in description (not blocked separately)
-  if (recipe.cookMinutes && recipe.cookMinutes > 60) {
-    parts.push("Note: Long cook time — may include hands-off periods");
+  if (handsOff) {
+    parts.push(`Hands-off from ${formatTime12(handsOff.handsOffStart)}–${formatTime12(handsOff.handsOffEnd)}. Dinner ready by ${formatTime12(handsOff.dinnerReady)}.`);
   }
 
   if (entry.category === "explore") {
@@ -214,6 +246,13 @@ function buildDescription(recipe: any, entry: any, _includePrep: boolean): strin
   }
 
   return parts.join("\n");
+}
+
+function formatTime12(time24: string): string {
+  const [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "pm" : "am";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, "0")}${period}`;
 }
 
 function timeToMinutes(time: string): number {

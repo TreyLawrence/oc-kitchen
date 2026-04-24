@@ -17,6 +17,7 @@ interface CreateRecipeInput {
   servings?: number;
   prepMinutes?: number;
   cookMinutes?: number;
+  passiveMinutes?: number;
   tags?: TypedTag[] | string[];
   notes?: string;
   imageUrl?: string;
@@ -56,6 +57,7 @@ export class RecipeRepository {
         servings: input.servings ?? null,
         prepMinutes: input.prepMinutes ?? null,
         cookMinutes: input.cookMinutes ?? null,
+        passiveMinutes: input.passiveMinutes ?? null,
         instructions: input.instructions,
         verdict: null,
         isFavorite: false,
@@ -177,6 +179,7 @@ export class RecipeRepository {
     servings: number;
     prepMinutes: number;
     cookMinutes: number;
+    passiveMinutes: number;
     instructions: string;
     verdict: string;
     isFavorite: boolean;
