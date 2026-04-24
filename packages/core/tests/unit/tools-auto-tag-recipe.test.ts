@@ -127,6 +127,23 @@ describe("auto_tag_recipe tool", () => {
     expect(result.seasonalVocabulary).toContain("summer");
   });
 
+  it("instructs agent to call update_recipe (not a nonexistent tool)", async () => {
+    const recipe = await recipeRepo.create({
+      title: "Test Recipe",
+      source: "manual",
+      instructions: "Cook it",
+      prepMinutes: 10,
+      cookMinutes: 20,
+    });
+
+    const respond = vi.fn();
+    await tool.handler({ recipeId: recipe.id }, { respond });
+
+    const result = respond.mock.calls[0][1];
+    expect(result.instructions).toContain("update_recipe");
+    expect(result.instructions).not.toContain("save_recipe_tags");
+  });
+
   it("errors for nonexistent recipe", async () => {
     const respond = vi.fn();
     await tool.handler({ recipeId: "nonexistent" }, { respond });

@@ -69,7 +69,7 @@ export function createAutoTagRecipeTool(
           cuisineVocabulary: CUISINE_VOCABULARY,
           seasonalVocabulary: SEASONAL_VOCABULARY,
           instructions:
-            `Classify this recipe's cuisine and season based on its title, ingredients, and instructions. Use the cuisine vocabulary and seasonal vocabulary provided. A recipe can have multiple cuisine tags (e.g., fusion dishes) and multiple seasonal tags. Only apply seasonal tags when the recipe strongly fits a season — not every recipe needs one. Respond by calling save_recipe_tags with the recipeId and your chosen cuisine and seasonal tags.`,
+            `Classify this recipe's cuisine and season based on its title, ingredients, and instructions. Use the cuisine vocabulary and seasonal vocabulary provided. A recipe can have multiple cuisine tags (e.g., fusion dishes) and multiple seasonal tags. Only apply seasonal tags when the recipe strongly fits a season — not every recipe needs one. Respond by calling update_recipe with the recipeId and your chosen cuisine and seasonal tags.`,
         });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
