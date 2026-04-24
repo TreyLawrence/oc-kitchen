@@ -1,11 +1,13 @@
 import { CookLogRepository } from "../repositories/cook-log.repo.js";
 import { RecipeRepository } from "../repositories/recipe.repo.js";
 import { PreferenceSummaryService } from "../services/preference-summary.service.js";
+import { ExploreRatioService } from "../services/explore-ratio.service.js";
 
 export function createLogCookTool(
   repo: CookLogRepository,
   recipeRepo?: RecipeRepository,
-  preferenceSummary?: PreferenceSummaryService
+  preferenceSummary?: PreferenceSummaryService,
+  exploreRatio?: ExploreRatioService
 ) {
   return {
     name: "log_cook",
@@ -60,7 +62,16 @@ export function createLogCookTool(
           }
         }
 
-        respond(true, { ok: true, entry, summaryContext });
+        // Check if explore ratio should adapt
+        let ratioAdaptation = null;
+        if (exploreRatio) {
+          const adaptation = await exploreRatio.checkAdaptation();
+          if (adaptation.adapted) {
+            ratioAdaptation = adaptation;
+          }
+        }
+
+        respond(true, { ok: true, entry, summaryContext, ratioAdaptation });
       } catch (error: any) {
         respond(false, { ok: false, error: error.message });
       }

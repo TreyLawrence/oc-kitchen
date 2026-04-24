@@ -32,6 +32,7 @@ import { GroceryRepository } from "./repositories/grocery.repo.js";
 import { GroceryGenerationService } from "./services/grocery-generation.service.js";
 import { AutoTaggerService } from "./services/auto-tagger.service.js";
 import { PreferenceSummaryService } from "./services/preference-summary.service.js";
+import { ExploreRatioService } from "./services/explore-ratio.service.js";
 import { createGenerateGroceryListTool } from "./tools/grocery-generate.js";
 import { createGetGroceryListTool } from "./tools/grocery-get.js";
 import { createUpdateGroceryListTool } from "./tools/grocery-update.js";
@@ -70,6 +71,7 @@ const plugin = {
     const groceryService = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, userProfileRepo);
     const autoTagger = new AutoTaggerService(userProfileRepo);
     const preferenceSummary = new PreferenceSummaryService(cookLogRepo, userProfileRepo);
+    const exploreRatioService = new ExploreRatioService(cookLogRepo, userProfileRepo);
 
     // User profile tools
     api.registerTool(createUpdateUserProfileTool(userProfileRepo));
@@ -82,7 +84,7 @@ const plugin = {
     api.registerTool(createSearchRecipesTool(recipeRepo));
     api.registerTool(createUpdateRecipeTool(recipeRepo, autoTagger));
     api.registerTool(createDeleteRecipeTool(recipeRepo));
-    api.registerTool(createLogCookTool(cookLogRepo, recipeRepo, preferenceSummary));
+    api.registerTool(createLogCookTool(cookLogRepo, recipeRepo, preferenceSummary, exploreRatioService));
 
     // Recipe discovery tools
     api.registerTool(createImportRecipeTool(recipeRepo, autoTagger));
