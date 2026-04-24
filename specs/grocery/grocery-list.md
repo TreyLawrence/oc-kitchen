@@ -34,8 +34,9 @@ Generate a grocery list from a meal plan, subtracting inventory.
 ```json
 {
   "mealPlanId": "plan1",
-  "subtractInventory": true,    // default true
-  "name": "Week of Apr 27"      // optional, defaults to plan name
+  "subtractInventory": true,        // default true
+  "includePantryStaples": false,    // default false — excludes common staples
+  "name": "Week of Apr 27"          // optional, defaults to plan name
 }
 ```
 
@@ -129,10 +130,14 @@ Modify a grocery list — add/remove items, reassign stores, check items, change
    - "Your Weee! order is only $12 — their minimum is $35. Want to add more items, move these to Wegmans, or skip this order?"
    - The agent can suggest additional items to hit the minimum based on pantry staples or things the user buys regularly from that store.
 5. **User overrides** — any store assignment can be changed. The system should learn from overrides over time (future enhancement).
-5. **Pantry staples** — common items like salt, pepper, olive oil, butter are excluded by default unless the user's inventory shows "running low". Don't add things that every kitchen has.
-6. **Ad-hoc lists** — can be created without a meal plan. Just a plain shopping list.
-7. **List is mutable** until ordered — items can be added, removed, or reassigned at any time while in `draft` or `finalized` status.
-8. **Finalize before ordering** — status must be `finalized` before triggering a store order. This is a confirmation step.
+6. **Pantry staples** — common items (salt, pepper, olive oil, butter, flour, sugar, etc.) are excluded from the grocery list by default. This prevents cluttering the list with things every kitchen has.
+   - **Default list:** salt, pepper, black pepper, olive oil, vegetable oil, canola oil, butter, flour, all-purpose flour, sugar, granulated sugar, brown sugar, baking soda, baking powder, garlic powder, onion powder, paprika, cumin, oregano, thyme, bay leaf, bay leaves, cinnamon, vanilla extract, apple cider vinegar, red wine vinegar, white vinegar, honey, water, ice
+   - **Override via inventory:** If a staple exists in inventory with `notes` containing "running low" or "need more", it is NOT excluded (i.e., it stays on the list so the user buys more).
+   - **`includePantryStaples` parameter:** The `generate_grocery_list` tool accepts an optional `includePantryStaples` boolean (default `false`). When `true`, no staple filtering is applied.
+   - **Reporting:** Excluded staples appear in the `subtracted` array with `result: "pantry staple"` so the user can see what was filtered and override if needed.
+7. **Ad-hoc lists** — can be created without a meal plan. Just a plain shopping list.
+8. **List is mutable** until ordered — items can be added, removed, or reassigned at any time while in `draft` or `finalized` status.
+9. **Finalize before ordering** — status must be `finalized` before triggering a store order. This is a confirmation step.
 
 ## The Conversation Flow
 

@@ -454,6 +454,103 @@ describe("GroceryGenerationService", () => {
     expect(basil[0].quantity).toBeCloseTo(0.75);
   });
 
+  // Spec rule 6: "Pantry staples — common items excluded by default"
+  it("excludes pantry staples from grocery list by default", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Simple Pasta",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "pasta", quantity: 1, unit: "lb", category: "pantry" },
+        { name: "salt", quantity: 1, unit: "tsp", category: "spice" },
+        { name: "olive oil", quantity: 2, unit: "tbsp", category: "pantry" },
+        { name: "butter", quantity: 1, unit: "tbsp", category: "dairy" },
+        { name: "garlic", quantity: 3, unit: "cloves", category: "produce" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+
+    // salt, olive oil, butter are pantry staples — should be excluded
+    expect(result.list.items.find((i: any) => i.name === "salt")).toBeUndefined();
+    expect(result.list.items.find((i: any) => i.name === "olive oil")).toBeUndefined();
+    expect(result.list.items.find((i: any) => i.name === "butter")).toBeUndefined();
+
+    // pasta and garlic are NOT pantry staples — should remain
+    expect(result.list.items.find((i: any) => i.name === "pasta")).toBeDefined();
+    expect(result.list.items.find((i: any) => i.name === "garlic")).toBeDefined();
+
+    // Excluded staples should appear in subtracted with "pantry staple" result
+    expect(result.subtracted.some((s: any) => s.name === "salt" && s.result === "pantry staple")).toBe(true);
+    expect(result.subtracted.some((s: any) => s.name === "olive oil" && s.result === "pantry staple")).toBe(true);
+  });
+
+  it("includes pantry staples when includePantryStaples is true", async () => {
+    const r1 = await recipeRepo.create({
+      title: "Simple Pasta",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "pasta", quantity: 1, unit: "lb", category: "pantry" },
+        { name: "salt", quantity: 1, unit: "tsp", category: "spice" },
+        { name: "olive oil", quantity: 2, unit: "tbsp", category: "pantry" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id, true, true);
+
+    // All items should be present when staples are included
+    expect(result.list.items.find((i: any) => i.name === "salt")).toBeDefined();
+    expect(result.list.items.find((i: any) => i.name === "olive oil")).toBeDefined();
+    expect(result.list.items.find((i: any) => i.name === "pasta")).toBeDefined();
+  });
+
+  it("keeps pantry staple on list when inventory says running low", async () => {
+    // Add olive oil to inventory with "running low" note
+    await inventoryRepo.add([
+      { name: "olive oil", category: "pantry", quantity: 0.25, unit: "bottle", location: "pantry", notes: "running low" },
+    ]);
+
+    const r1 = await recipeRepo.create({
+      title: "Salad",
+      source: "manual",
+      instructions: "Toss",
+      ingredients: [
+        { name: "olive oil", quantity: 3, unit: "tbsp", category: "pantry" },
+        { name: "salt", quantity: 1, unit: "pinch", category: "spice" },
+        { name: "lettuce", quantity: 1, unit: "head", category: "produce" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+
+    // olive oil should NOT be excluded because inventory says "running low"
+    expect(result.list.items.find((i: any) => i.name === "olive oil")).toBeDefined();
+    // salt should still be excluded (no inventory entry saying it's low)
+    expect(result.list.items.find((i: any) => i.name === "salt")).toBeUndefined();
+  });
+
   it("does not warn when weee has enough items", async () => {
     const r1 = await recipeRepo.create({
       title: "Korean Feast",
