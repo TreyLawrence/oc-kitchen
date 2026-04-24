@@ -7,6 +7,7 @@ import { GroceryRepository } from "../../src/repositories/grocery.repo.js";
 import { UserProfileRepository } from "../../src/repositories/user-profile.repo.js";
 import { GroceryGenerationService } from "../../src/services/grocery-generation.service.js";
 import { createCreateGroceryListTool } from "../../src/tools/grocery-create.js";
+import { ButcherBoxCutoffService } from "../../src/services/butcherbox-cutoff.service.js";
 
 // Spec: specs/grocery/grocery-list.md
 
@@ -631,6 +632,98 @@ describe("GroceryGenerationService", () => {
     expect(result.list.items.find((i: any) => i.name === "olive oil")).toBeDefined();
     // salt should still be excluded (no inventory entry saying it's low)
     expect(result.list.items.find((i: any) => i.name === "salt")).toBeUndefined();
+  });
+
+  // Spec rule 3: "Check if the customization window for the next box is still open.
+  //               If BB can't cover it (wrong timing), fall back to Instacart."
+  it("falls back proteins to instacart when butcherbox cutoff has passed", async () => {
+    await profileRepo.setPreference("butcherbox_subscription", true);
+    await profileRepo.setPreference("butcherbox_cutoff_date", "2026-04-20"); // past
+    await profileRepo.setPreference("butcherbox_delivery_date", "2026-04-30");
+
+    const cutoffService = new ButcherBoxCutoffService(profileRepo, mealPlanRepo, recipeRepo);
+    service = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, profileRepo, cutoffService);
+
+    const r1 = await recipeRepo.create({
+      title: "Grilled Steak",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "ribeye", quantity: 1, unit: "lb", category: "protein" },
+        { name: "asparagus", quantity: 1, unit: "bunch", category: "produce" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const ribeye = result.list.items.find((i: any) => i.name === "ribeye");
+    expect(ribeye!.store).toBe("instacart"); // fell back
+    expect(result.warnings.some((w: string) => w.includes("ButcherBox"))).toBe(true);
+    expect(result.warnings.some((w: string) => w.includes("cutoff"))).toBe(true);
+  });
+
+  it("assigns proteins to butcherbox when cutoff window is still open", async () => {
+    await profileRepo.setPreference("butcherbox_subscription", true);
+    await profileRepo.setPreference("butcherbox_cutoff_date", "2026-04-30"); // future
+    await profileRepo.setPreference("butcherbox_delivery_date", "2026-05-05");
+
+    const cutoffService = new ButcherBoxCutoffService(profileRepo, mealPlanRepo, recipeRepo);
+    service = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, profileRepo, cutoffService);
+
+    const r1 = await recipeRepo.create({
+      title: "Grilled Steak",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "ribeye", quantity: 1, unit: "lb", category: "protein" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const ribeye = result.list.items.find((i: any) => i.name === "ribeye");
+    expect(ribeye!.store).toBe("butcherbox");
+    expect(result.warnings.some((w: string) => w.includes("ButcherBox") && w.includes("cutoff"))).toBe(false);
+  });
+
+  it("falls back to instacart when no cutoff date is set", async () => {
+    await profileRepo.setPreference("butcherbox_subscription", true);
+    // no cutoff date set
+
+    const cutoffService = new ButcherBoxCutoffService(profileRepo, mealPlanRepo, recipeRepo);
+    service = new GroceryGenerationService(recipeRepo, mealPlanRepo, inventoryRepo, groceryRepo, profileRepo, cutoffService);
+
+    const r1 = await recipeRepo.create({
+      title: "Chicken Dinner",
+      source: "manual",
+      instructions: "Cook",
+      ingredients: [
+        { name: "chicken thighs", quantity: 2, unit: "lbs", category: "protein" },
+      ],
+    });
+
+    const plan = await mealPlanRepo.create({
+      name: "Test",
+      weekStart: "2026-04-27",
+      weekEnd: "2026-05-03",
+      entries: [{ dayOfWeek: 0, mealType: "dinner", recipeId: r1.id, category: "exploit" }],
+    });
+
+    const result = await service.generateFromPlan(plan.id);
+    const chicken = result.list.items.find((i: any) => i.name === "chicken thighs");
+    expect(chicken!.store).toBe("instacart");
   });
 
   it("does not warn when weee has enough items", async () => {
